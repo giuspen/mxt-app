@@ -20,7 +20,8 @@ rm -rf "$OUTDIR"
 mkdir "$OUTDIR"
 
 # Build both normal and debug versions
-for DEBUG in 0 1
+#for DEBUG in 0 1
+for DEBUG in 0
 do
   case "$DEBUG" in
     0)
@@ -41,7 +42,8 @@ do
 
   # Build all Android archs using NDK
   # -B force rebuild
-  for PIE in 0 1
+  #for PIE in 0 1
+  for PIE in 0
   do
     case "$PIE" in
       0)
@@ -55,7 +57,7 @@ do
     esac
 
     ndk-build clean
-    ndk-build -B NDK_DEBUG=$DEBUG APP_PLATFORM=$APP_PLATFORM V=1
+    ndk-build -B NDK_DEBUG=$DEBUG APP_PLATFORM=$APP_PLATFORM V=1 -j4
 
     for ARCH in $(basename -a libs/*)
     do
@@ -66,7 +68,8 @@ do
     done
   done
 
-  for ARCH in x86 32bit arm armhf
+  #for ARCH in x86 32bit arm armhf arm64
+  for ARCH in arm64
   do
     case "$ARCH" in
       32bit)
@@ -84,12 +87,17 @@ do
         EXTRA_CFLAGS=""
         LDFLAGS=""
         ;;
+      arm64)
+        AUTOGEN_OPTIONS+=" --host=aarch64-linux-gnu"
+        EXTRA_CFLAGS=""
+        LDFLAGS=""
+        ;;
     esac
 
     # Build and copy binaries using autotool toolchain
     ./autogen.sh "$AUTOGEN_OPTIONS"
     make clean
-    make DESTDIR="$(pwd)/out" CFLAGS="$CFLAGS $EXTRA_CFLAGS" $LDFLAGS $TARGET
+    make DESTDIR="$(pwd)/out" CFLAGS="$CFLAGS $EXTRA_CFLAGS" $LDFLAGS $TARGET -j4
     mkdir -p -v "$OUTDIR/gnueabi/$ARCH"
     cp -v "out/usr/local/bin/mxt-app" "$OUTDIR/gnueabi/$ARCH/$BINARY_NAME"
   done

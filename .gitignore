@@ -38,3 +38,5 @@ Makefile.in
 doc/html
 doc/doxygen_sqlite3.db
 /tags
+/out
+mxt-app-*
