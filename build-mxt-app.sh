@@ -113,6 +113,6 @@ pandoc --smart \
   README.md
 
 # Generate changelog from git commit log
-gitlog-to-changelog > "$OUTDIR/CHANGELOG.txt"
+#gitlog-to-changelog > "$OUTDIR/CHANGELOG.txt"
 
-zip -r "mxt-app-$VERSION.zip" "mxt-app-$VERSION"
+#zip -r "mxt-app-$VERSION.zip" "mxt-app-$VERSION"
