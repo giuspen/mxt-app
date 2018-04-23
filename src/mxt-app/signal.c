@@ -52,38 +52,43 @@ volatile sig_atomic_t mxt_sigint_rx = 0;
 /// \brief Signal handler to catch SIGINT (Ctrl-C) when viewing continuous msgs
 static void mxt_signal_handler(int signal_num)
 {
-  if (signal_num == SIGINT) {
-    mxt_sigint_rx = 1;
-  }
+    if (signal_num == SIGINT)
+    {
+        mxt_sigint_rx = 1;
+    }
 }
 
 //******************************************************************************
 /// \brief Handles SIGINT signal
 static void mxt_init_sigint_handler(struct mxt_device *mxt, struct sigaction *sa)
 {
-  sa->sa_handler = mxt_signal_handler;
-  sigemptyset(&sa->sa_mask);
-  sa->sa_flags = SA_RESTART;
-  if (sigaction(SIGINT, sa, NULL) == -1)
-    mxt_err(mxt->ctx, "Can't catch SIGINT");
+    sa->sa_handler = mxt_signal_handler;
+    sigemptyset(&sa->sa_mask);
+    sa->sa_flags = SA_RESTART;
+    if (sigaction(SIGINT, sa, NULL) == -1)
+    {
+        mxt_err(mxt->ctx, "Can't catch SIGINT");
+    }
 }
 
 //******************************************************************************
 /// \brief Sets default function for SIGINT signal
 static void mxt_release_sigint_handler(struct mxt_device *mxt, struct sigaction *sa)
 {
-  sa->sa_handler = SIG_DFL;
-  if (sigaction(SIGINT, sa, NULL) == -1)
-    mxt_err(mxt->ctx, "Can't return SIGINT to default handler");
+    sa->sa_handler = SIG_DFL;
+    if (sigaction(SIGINT, sa, NULL) == -1)
+    {
+        mxt_err(mxt->ctx, "Can't return SIGINT to default handler");
+    }
 
-  mxt_sigint_rx = 0;
+    mxt_sigint_rx = 0;
 }
 
 //******************************************************************************
 /// \brief Get internal sigint flag
 sig_atomic_t mxt_get_sigint_flag(void)
 {
-  return mxt_sigint_rx;
+    return mxt_sigint_rx;
 }
 
 //******************************************************************************
@@ -99,14 +104,14 @@ sig_atomic_t mxt_get_sigint_flag(void)
 /// \return #mxt_rc
 int mxt_read_messages_sigint(struct mxt_device *mxt, int timeout_seconds, void *context,
                              int (*msg_func)(struct mxt_device *mxt, uint8_t *msg,
-                                 void *context, uint8_t size))
+                                     void *context, uint8_t size))
 {
-  int ret;
-  struct sigaction sa;
+    int ret;
+    struct sigaction sa;
 
-  mxt_init_sigint_handler(mxt, &sa);
-  ret = mxt_read_messages(mxt, timeout_seconds, context, (msg_func), (int *)&mxt_sigint_rx);
-  mxt_release_sigint_handler(mxt, &sa);
+    mxt_init_sigint_handler(mxt, &sa);
+    ret = mxt_read_messages(mxt, timeout_seconds, context, (msg_func), (int *)&mxt_sigint_rx);
+    mxt_release_sigint_handler(mxt, &sa);
 
-  return ret;
+    return ret;
 }

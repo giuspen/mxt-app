@@ -32,10 +32,11 @@
 
 //******************************************************************************
 /// \brief Device information for hidraw-dev backend
-struct hidraw_conn_info {
-  char node[20];
-  uint8_t report_id;
-  int fd;
+struct hidraw_conn_info
+{
+    char node[20];
+    uint8_t report_id;
+    int fd;
 };
 
 int hidraw_register(struct mxt_device *mxt);

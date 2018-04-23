@@ -40,21 +40,25 @@
 /// \return #mxt_rc
 int t44_get_msg_count(struct mxt_device *mxt, int *count_out)
 {
-  uint16_t addr;
-  int ret;
-  uint8_t count;
+    uint16_t addr;
+    int ret;
+    uint8_t count;
 
-  addr = mxt_get_object_address(mxt, SPT_MESSAGECOUNT_T44, 0);
-  if (addr == OBJECT_NOT_FOUND)
-    return MXT_ERROR_OBJECT_NOT_FOUND;
+    addr = mxt_get_object_address(mxt, SPT_MESSAGECOUNT_T44, 0);
+    if (addr == OBJECT_NOT_FOUND)
+    {
+        return MXT_ERROR_OBJECT_NOT_FOUND;
+    }
 
-  /* Get T44 count */
-  ret = mxt_read_register(mxt, &count, addr, 1);
-  if (ret)
-    return ret;
+    /* Get T44 count */
+    ret = mxt_read_register(mxt, &count, addr, 1);
+    if (ret)
+    {
+        return ret;
+    }
 
-  *count_out = count;
-  return MXT_SUCCESS;
+    *count_out = count;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -62,22 +66,25 @@ int t44_get_msg_count(struct mxt_device *mxt, int *count_out)
 /// \return String or NULL for error
 char *t44_get_msg_string(struct mxt_device *mxt)
 {
-  int ret, i;
-  int size;
-  size_t length;
-  unsigned char databuf[20];
+    int ret, i;
+    int size;
+    size_t length;
+    unsigned char databuf[20];
 
-  ret = t44_get_msg_bytes(mxt, databuf, sizeof(databuf), &size);
-  if (ret)
-    return NULL;
+    ret = t44_get_msg_bytes(mxt, databuf, sizeof(databuf), &size);
+    if (ret)
+    {
+        return NULL;
+    }
 
-  length = snprintf(mxt->msg_string, sizeof(mxt->msg_string), MSG_PREFIX);
-  for (i = 0; i < size; i++) {
-    length += snprintf(mxt->msg_string + length, sizeof(mxt->msg_string) - length,
-                       "%02X ", databuf[i]);
-  }
+    length = snprintf(mxt->msg_string, sizeof(mxt->msg_string), MSG_PREFIX);
+    for (i = 0; i < size; i++)
+    {
+        length += snprintf(mxt->msg_string + length, sizeof(mxt->msg_string) - length,
+                           "%02X ", databuf[i]);
+    }
 
-  return &mxt->msg_string[0];
+    return &mxt->msg_string[0];
 }
 
 //******************************************************************************
@@ -86,33 +93,39 @@ char *t44_get_msg_string(struct mxt_device *mxt)
 int t44_get_msg_bytes(struct mxt_device *mxt, unsigned char *buf,
                       size_t buflen, int *count)
 {
-  int ret;
-  uint16_t addr;
-  uint16_t size;
+    int ret;
+    uint16_t addr;
+    uint16_t size;
 
-  addr = mxt_get_object_address(mxt, GEN_MESSAGEPROCESSOR_T5, 0);
-  if (addr == OBJECT_NOT_FOUND)
-    return MXT_ERROR_OBJECT_NOT_FOUND;
+    addr = mxt_get_object_address(mxt, GEN_MESSAGEPROCESSOR_T5, 0);
+    if (addr == OBJECT_NOT_FOUND)
+    {
+        return MXT_ERROR_OBJECT_NOT_FOUND;
+    }
 
-  /* Do not read CRC byte */
-  size = mxt_get_object_size(mxt, GEN_MESSAGEPROCESSOR_T5) - 1;
-  if (size > buflen) {
-    mxt_err(mxt->ctx, "Buffer too small!");
-    return MXT_ERROR_NO_MEM;
-  }
+    /* Do not read CRC byte */
+    size = mxt_get_object_size(mxt, GEN_MESSAGEPROCESSOR_T5) - 1;
+    if (size > buflen)
+    {
+        mxt_err(mxt->ctx, "Buffer too small!");
+        return MXT_ERROR_NO_MEM;
+    }
 
-  ret = mxt_read_register(mxt, buf, addr, size);
-  if (ret)
-    return ret;
+    ret = mxt_read_register(mxt, buf, addr, size);
+    if (ret)
+    {
+        return ret;
+    }
 
-  /* Check for invalid message */
-  if (buf[0] == 255u) {
-    mxt_verb(mxt->ctx, "Invalid message");
-    return MXT_ERROR_NO_MESSAGE;
-  }
+    /* Check for invalid message */
+    if (buf[0] == 255u)
+    {
+        mxt_verb(mxt->ctx, "Invalid message");
+        return MXT_ERROR_NO_MESSAGE;
+    }
 
-  *count = size;
-  return MXT_SUCCESS;
+    *count = size;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -120,24 +133,27 @@ int t44_get_msg_bytes(struct mxt_device *mxt, unsigned char *buf,
 /// \return #mxt_rc
 int t44_msg_reset(struct mxt_device *mxt)
 {
-  int count, i, ret, size;
-  unsigned char databuf[20];
+    int count, i, ret, size;
+    unsigned char databuf[20];
 
-  ret = t44_get_msg_count(mxt, &count);
-  if (ret) {
-    mxt_verb(mxt->ctx, "rc = %d", ret);
-    return ret;
-  }
-
-  for (i = 0; i < count; i++) {
-    ret = t44_get_msg_bytes(mxt, &databuf[0], sizeof(databuf), &size);
-    if (ret) {
-      mxt_verb(mxt->ctx, "rc = %d", ret);
-      return ret;
+    ret = t44_get_msg_count(mxt, &count);
+    if (ret)
+    {
+        mxt_verb(mxt->ctx, "rc = %d", ret);
+        return ret;
     }
-  }
 
-  return MXT_SUCCESS;
+    for (i = 0; i < count; i++)
+    {
+        ret = t44_get_msg_bytes(mxt, &databuf[0], sizeof(databuf), &size);
+        if (ret)
+        {
+            mxt_verb(mxt->ctx, "rc = %d", ret);
+            return ret;
+        }
+    }
+
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -156,44 +172,57 @@ int mxt_read_messages(struct mxt_device *mxt, int timeout_seconds, void *context
                       int (*msg_func)(struct mxt_device *mxt, uint8_t *msg,
                                       void *context, uint8_t size), int *flag)
 {
-  int count, len;
-  time_t now;
-  time_t start_time = time(NULL);
-  uint8_t buf[10];
-  int ret;
+    int count, len;
+    time_t now;
+    time_t start_time = time(NULL);
+    uint8_t buf[10];
+    int ret;
 
-  while (!*flag) {
-    mxt_msg_wait(mxt, MXT_MSG_POLL_DELAY_MS);
+    while (!*flag)
+    {
+        mxt_msg_wait(mxt, MXT_MSG_POLL_DELAY_MS);
 
-    ret = mxt_get_msg_count(mxt, &count);
-    if (ret)
-      return ret;
+        ret = mxt_get_msg_count(mxt, &count);
+        if (ret)
+        {
+            return ret;
+        }
 
-    while (count--) {
-      len = 0;
-      ret = mxt_get_msg_bytes(mxt, buf, sizeof(buf), &len);
-      if (ret && ret != MXT_ERROR_NO_MESSAGE)
-        return ret;
+        while (count--)
+        {
+            len = 0;
+            ret = mxt_get_msg_bytes(mxt, buf, sizeof(buf), &len);
+            if (ret && ret != MXT_ERROR_NO_MESSAGE)
+            {
+                return ret;
+            }
 
-      if (len > 0) {
-        ret = ((*msg_func)(mxt, buf, context, len));
-        if (ret != MXT_MSG_CONTINUE)
-          return ret;
-      }
+            if (len > 0)
+            {
+                ret = ((*msg_func)(mxt, buf, context, len));
+                if (ret != MXT_MSG_CONTINUE)
+                {
+                    return ret;
+                }
+            }
+        }
+
+        if (timeout_seconds == 0)
+        {
+            return MXT_SUCCESS;
+        }
+        else if (timeout_seconds > 0)
+        {
+            now = time(NULL);
+            if ((now - start_time) > timeout_seconds)
+            {
+                mxt_err(mxt->ctx, "Timeout");
+                return MXT_ERROR_TIMEOUT;
+            }
+        }
     }
 
-    if (timeout_seconds == 0) {
-      return MXT_SUCCESS;
-    } else if (timeout_seconds > 0) {
-      now = time(NULL);
-      if ((now - start_time) > timeout_seconds) {
-        mxt_err(mxt->ctx, "Timeout");
-        return MXT_ERROR_TIMEOUT;
-      }
-    }
-  }
-
-  return MXT_SUCCESS;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -201,11 +230,11 @@ int mxt_read_messages(struct mxt_device *mxt, int timeout_seconds, void *context
 /// \return #mxt_rc
 int mxt_flush_msgs(struct mxt_device *mxt)
 {
-  int dummy;
+    int dummy;
 
-  mxt_dbg(mxt->ctx, "Flushing messages");
+    mxt_dbg(mxt->ctx, "Flushing messages");
 
-  return mxt_get_msg_count(mxt, &dummy);
+    return mxt_get_msg_count(mxt, &dummy);
 }
 
 //******************************************************************************
@@ -214,13 +243,14 @@ int mxt_flush_msgs(struct mxt_device *mxt)
 static int get_checksum_message(struct mxt_device *mxt, uint8_t *msg,
                                 void *context, uint8_t size)
 {
-  if (mxt_report_id_to_type(mxt, msg[0]) == GEN_COMMANDPROCESSOR_T6) {
-    uint32_t *checksum = context;
-    *checksum = msg[2] | (msg[3] << 8) | (msg[4] << 16);
+    if (mxt_report_id_to_type(mxt, msg[0]) == GEN_COMMANDPROCESSOR_T6)
+    {
+        uint32_t *checksum = context;
+        *checksum = msg[2] | (msg[3] << 8) | (msg[4] << 16);
 
-    return MXT_SUCCESS;
-  }
-  return MXT_MSG_CONTINUE;
+        return MXT_SUCCESS;
+    }
+    return MXT_MSG_CONTINUE;
 }
 
 //******************************************************************************
@@ -228,17 +258,21 @@ static int get_checksum_message(struct mxt_device *mxt, uint8_t *msg,
 /// \return #mxt_rc
 uint32_t mxt_get_config_crc(struct mxt_device *mxt)
 {
-  int ret;
-  int flag = false;
-  uint32_t checksum;
+    int ret;
+    int flag = false;
+    uint32_t checksum;
 
-  ret = mxt_report_all(mxt);
-  if (ret)
-    return 0;
+    ret = mxt_report_all(mxt);
+    if (ret)
+    {
+        return 0;
+    }
 
-  ret = mxt_read_messages(mxt, 2, &checksum, get_checksum_message, &flag);
-  if (ret)
-    return 0;
+    ret = mxt_read_messages(mxt, 2, &checksum, get_checksum_message, &flag);
+    if (ret)
+    {
+        return 0;
+    }
 
-  return checksum;
+    return checksum;
 }

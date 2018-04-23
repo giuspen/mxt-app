@@ -58,26 +58,31 @@ struct mxt_conn_info;
 #define HIDRAW_TIMEOUT_DELAY_US         500
 
 
-struct hid_packet {
-  uint8_t report_id;
+struct hid_packet
+{
+    uint8_t report_id;
 
-  union {
-    struct {
-      uint8_t cmd;
-      uint8_t rx_bytes;
-      uint8_t tx_bytes;
-      uint16_t address __attribute__((packed));
-      uint8_t write_data[MXT_HID_WRITE_DATA_SIZE];
-    } __attribute__((packed));
-    struct {
-      uint8_t result;
-      uint8_t bytes_read;
-      uint8_t read_data[MXT_HID_READ_DATA_SIZE];
-    } __attribute__((packed));
-    struct {
-      uint8_t raw_data[18];
-    } __attribute__((packed));
-  };
+    union
+    {
+        struct
+        {
+            uint8_t cmd;
+            uint8_t rx_bytes;
+            uint8_t tx_bytes;
+            uint16_t address __attribute__((packed));
+            uint8_t write_data[MXT_HID_WRITE_DATA_SIZE];
+        } __attribute__((packed));
+        struct
+        {
+            uint8_t result;
+            uint8_t bytes_read;
+            uint8_t read_data[MXT_HID_READ_DATA_SIZE];
+        } __attribute__((packed));
+        struct
+        {
+            uint8_t raw_data[18];
+        } __attribute__((packed));
+    };
 } __attribute__((packed));
 
 //******************************************************************************
@@ -85,9 +90,9 @@ struct hid_packet {
 /// \return #mxt_rc
 int hidraw_register(struct mxt_device *mxt)
 {
-  mxt_info(mxt->ctx, "Registered hidraw adapter:%s", mxt->conn->hidraw.node );
+    mxt_info(mxt->ctx, "Registered hidraw adapter:%s", mxt->conn->hidraw.node );
 
-  return MXT_SUCCESS;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -95,25 +100,26 @@ int hidraw_register(struct mxt_device *mxt)
 /// \return #mxt_rc
 static int hidraw_open(struct mxt_device *mxt)
 {
-  char filename[20];
+    char filename[20];
 
-  snprintf(filename, sizeof(filename), "%s", mxt->conn->hidraw.node);
-  mxt->conn->hidraw.fd = open(filename, O_RDWR|O_NONBLOCK);
-  if (mxt->conn->hidraw.fd < 0) {
-    mxt_err(mxt->ctx, "Could not open %s, error %s (%d)",
-            filename, strerror(errno), errno);
-    return mxt_errno_to_rc(errno);
-  }
-  mxt_dbg(mxt->ctx, "Opened %s, fd: %d", filename, mxt->conn->hidraw.fd);
+    snprintf(filename, sizeof(filename), "%s", mxt->conn->hidraw.node);
+    mxt->conn->hidraw.fd = open(filename, O_RDWR|O_NONBLOCK);
+    if (mxt->conn->hidraw.fd < 0)
+    {
+        mxt_err(mxt->ctx, "Could not open %s, error %s (%d)",
+                filename, strerror(errno), errno);
+        return mxt_errno_to_rc(errno);
+    }
+    mxt_dbg(mxt->ctx, "Opened %s, fd: %d", filename, mxt->conn->hidraw.fd);
 
-  return MXT_SUCCESS;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
 /// \brief  Release device
 void hidraw_release(struct mxt_device *mxt)
 {
-  return;
+    return;
 }
 
 //******************************************************************************
@@ -121,28 +127,30 @@ void hidraw_release(struct mxt_device *mxt)
 /// \return Number of databytes sent
 static int hidraw_write_packet(struct mxt_device *mxt, struct hid_packet *write_pkt, uint8_t *byte_count)
 {
-  int ret;
-  uint8_t pkt_size = write_pkt->rx_bytes + 4; /* allowing for header */
+    int ret;
+    uint8_t pkt_size = write_pkt->rx_bytes + 4; /* allowing for header */
 
-  if ((ret = write(mxt->conn->hidraw.fd, write_pkt, pkt_size)) != pkt_size) {
-    mxt_verb(mxt->ctx, "HIDRAW retry");
-    usleep(HIDRAW_WRITE_RETRY_DELAY_US);
-    if ((ret = write(mxt->conn->hidraw.fd, &write_pkt, pkt_size)) != pkt_size) {
-      mxt_err(mxt->ctx, "Error %s (%d) writing to hidraw",
-              strerror(errno), errno);
-      ret = mxt_errno_to_rc(errno);
+    if ((ret = write(mxt->conn->hidraw.fd, write_pkt, pkt_size)) != pkt_size)
+    {
+        mxt_verb(mxt->ctx, "HIDRAW retry");
+        usleep(HIDRAW_WRITE_RETRY_DELAY_US);
+        if ((ret = write(mxt->conn->hidraw.fd, &write_pkt, pkt_size)) != pkt_size)
+        {
+            mxt_err(mxt->ctx, "Error %s (%d) writing to hidraw",
+                    strerror(errno), errno);
+            ret = mxt_errno_to_rc(errno);
+        }
     }
-  }
 
-  mxt_log_buffer(mxt->ctx, LOG_VERBOSE, "PKT TX:",
-                 (const unsigned char *) write_pkt, pkt_size);
+    mxt_log_buffer(mxt->ctx, LOG_VERBOSE, "PKT TX:",
+                   (const unsigned char *) write_pkt, pkt_size);
 
-  *byte_count = ret - 6;
+    *byte_count = ret - 6;
 
-  mxt_dbg(mxt->ctx, "Sending packet: size: %d No. data bytes TX: %d",
-          pkt_size, *byte_count);
+    mxt_dbg(mxt->ctx, "Sending packet: size: %d No. data bytes TX: %d",
+            pkt_size, *byte_count);
 
-  return MXT_SUCCESS;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -150,17 +158,17 @@ static int hidraw_write_packet(struct mxt_device *mxt, struct hid_packet *write_
 /// \return #mxt_rc
 static int hidraw_write_read_cmd(struct mxt_device *mxt, uint16_t start_register, uint8_t count, uint8_t *byte_count)
 {
-  struct hid_packet cmd_pkt = { 0 };
+    struct hid_packet cmd_pkt = { 0 };
 
-  cmd_pkt.report_id = mxt->conn->hidraw.report_id;
-  cmd_pkt.cmd = 0x51;
-  cmd_pkt.rx_bytes = 2;      /* includes start address word */
-  cmd_pkt.tx_bytes = count;
-  cmd_pkt.address = htole16(start_register);
+    cmd_pkt.report_id = mxt->conn->hidraw.report_id;
+    cmd_pkt.cmd = 0x51;
+    cmd_pkt.rx_bytes = 2;      /* includes start address word */
+    cmd_pkt.tx_bytes = count;
+    cmd_pkt.address = htole16(start_register);
 
-  mxt_dbg(mxt->ctx, "Sending read command");
+    mxt_dbg(mxt->ctx, "Sending read command");
 
-  return hidraw_write_packet(mxt, &cmd_pkt, byte_count);
+    return hidraw_write_packet(mxt, &cmd_pkt, byte_count);
 }
 
 //******************************************************************************
@@ -169,27 +177,32 @@ static int hidraw_write_read_cmd(struct mxt_device *mxt, uint16_t start_register
 static int hidraw_read_response(struct mxt_device *mxt, struct hid_packet *read_pkt,
                                 size_t count)
 {
-  ssize_t ret = 0;
-  size_t t_count = 0;
-  int timeout = 0;
+    ssize_t ret = 0;
+    size_t t_count = 0;
+    int timeout = 0;
 
-  do {
-    ret = read(mxt->conn->hidraw.fd, read_pkt + t_count, count);
-    if ((size_t)ret != count) {
-      mxt_dbg(mxt->ctx, "Error %s (%d) reading from hidraw",
-              strerror(errno), errno);
-      ret = mxt_errno_to_rc(errno);
-    } else {
-      t_count += (size_t)ret;
+    do
+    {
+        ret = read(mxt->conn->hidraw.fd, read_pkt + t_count, count);
+        if ((size_t)ret != count)
+        {
+            mxt_dbg(mxt->ctx, "Error %s (%d) reading from hidraw",
+                    strerror(errno), errno);
+            ret = mxt_errno_to_rc(errno);
+        }
+        else
+        {
+            t_count += (size_t)ret;
+        }
+        usleep(HIDRAW_READ_RETRY_DELAY_US);
     }
-    usleep(HIDRAW_READ_RETRY_DELAY_US);
-  } while (timeout++ <= HIDRAW_TIMEOUT_DELAY_US && t_count != count);
+    while (timeout++ <= HIDRAW_TIMEOUT_DELAY_US && t_count != count);
 
-  mxt_dbg(mxt->ctx, "No. bytes requested: %zu, No. of bytes read: %zu",
-          count, t_count);
-  mxt_log_buffer(mxt->ctx, LOG_VERBOSE, "RD PKT RX:",
-                 (const unsigned char *) read_pkt, count);
-  return MXT_SUCCESS;
+    mxt_dbg(mxt->ctx, "No. bytes requested: %zu, No. of bytes read: %zu",
+            count, t_count);
+    mxt_log_buffer(mxt->ctx, LOG_VERBOSE, "RD PKT RX:",
+                   (const unsigned char *) read_pkt, count);
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -198,19 +211,23 @@ static int hidraw_read_response(struct mxt_device *mxt, struct hid_packet *read_
 static int hidraw_read_packet(struct mxt_device *mxt, struct hid_packet *read_pkt,
                               uint16_t start_register, size_t count)
 {
-  int pkt_count = count + 3;
-  int ret = 0;
-  uint8_t byte_count = 0;
+    int pkt_count = count + 3;
+    int ret = 0;
+    uint8_t byte_count = 0;
 
-  ret = hidraw_write_read_cmd(mxt, start_register, count, &byte_count);
-  if (ret)
-    return ret;
+    ret = hidraw_write_read_cmd(mxt, start_register, count, &byte_count);
+    if (ret)
+    {
+        return ret;
+    }
 
-  ret = hidraw_read_response(mxt, read_pkt, pkt_count);
-  if (ret < 0)
-    return ret;
+    ret = hidraw_read_response(mxt, read_pkt, pkt_count);
+    if (ret < 0)
+    {
+        return ret;
+    }
 
-  return ret - 3;
+    return ret - 3;
 }
 
 //******************************************************************************
@@ -221,36 +238,40 @@ int hidraw_read_register(struct mxt_device *mxt, unsigned char *buf,
                          size_t *bytes_transferred)
 {
 
-  int ret;
-  struct hid_packet read_pkt = { 0 };
+    int ret;
+    struct hid_packet read_pkt = { 0 };
 
-  mxt_dbg(mxt->ctx, "%s - start_register:%d No. bytes requested:%zu",
-          __func__, start_register, count);
+    mxt_dbg(mxt->ctx, "%s - start_register:%d No. bytes requested:%zu",
+            __func__, start_register, count);
 
-  ret = hidraw_open(mxt);
-  if (ret)
-    return ret;
-
-  size_t bytes_read = 0;
-  while (bytes_read < count) {
-    ret = hidraw_read_packet(mxt, &read_pkt,
-                             start_register + bytes_read,
-                             (count - bytes_read <= MXT_HID_READ_DATA_SIZE ? count - bytes_read : MXT_HID_READ_DATA_SIZE));
-    if (ret < 0) {
-      mxt_dbg(mxt->ctx, "read error %s (%d)", strerror(errno), errno);
-      ret = mxt_errno_to_rc(errno);
+    ret = hidraw_open(mxt);
+    if (ret)
+    {
+        return ret;
     }
 
-    memcpy(buf + bytes_read, read_pkt.read_data, ret);
+    size_t bytes_read = 0;
+    while (bytes_read < count)
+    {
+        ret = hidraw_read_packet(mxt, &read_pkt,
+                                 start_register + bytes_read,
+                                 (count - bytes_read <= MXT_HID_READ_DATA_SIZE ? count - bytes_read : MXT_HID_READ_DATA_SIZE));
+        if (ret < 0)
+        {
+            mxt_dbg(mxt->ctx, "read error %s (%d)", strerror(errno), errno);
+            ret = mxt_errno_to_rc(errno);
+        }
 
-    bytes_read += ret;
-  }
+        memcpy(buf + bytes_read, read_pkt.read_data, ret);
 
-  *bytes_transferred = bytes_read;
+        bytes_read += ret;
+    }
 
-  close(mxt->conn->hidraw.fd);
-  mxt->conn->hidraw.fd = 0;
-  return MXT_SUCCESS;
+    *bytes_transferred = bytes_read;
+
+    close(mxt->conn->hidraw.fd);
+    mxt->conn->hidraw.fd = 0;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -258,50 +279,54 @@ int hidraw_read_register(struct mxt_device *mxt, unsigned char *buf,
 /// \return #mxt_rc
 int hidraw_write_register(struct mxt_device *mxt, unsigned char const *val, uint16_t start_register, int datalength)
 {
-  int ret;
-  uint8_t byte_count;
-  struct hid_packet write_pkt;
-  memset(&write_pkt, 0x00, sizeof(struct hid_packet));
+    int ret;
+    uint8_t byte_count;
+    struct hid_packet write_pkt;
+    memset(&write_pkt, 0x00, sizeof(struct hid_packet));
 
-  write_pkt.report_id = mxt->conn->hidraw.report_id;
-  write_pkt.cmd = 0x51;
-  write_pkt.tx_bytes = 0;
+    write_pkt.report_id = mxt->conn->hidraw.report_id;
+    write_pkt.cmd = 0x51;
+    write_pkt.tx_bytes = 0;
 
-  mxt_dbg(mxt->ctx, "%s - start_register:%d No. bytes to write:%d",
-          __func__, start_register, datalength);
+    mxt_dbg(mxt->ctx, "%s - start_register:%d No. bytes to write:%d",
+            __func__, start_register, datalength);
 
-  ret = hidraw_open(mxt);
-  if (ret)
-    return ret;
-
-  int bytes_written = 0;
-
-  while (bytes_written < datalength) {
-    write_pkt.rx_bytes = MXT_HID_ADDR_SIZE +
-                         (datalength - bytes_written <= MXT_HID_WRITE_DATA_SIZE ? datalength - bytes_written : MXT_HID_WRITE_DATA_SIZE);
-    write_pkt.address = htole16(start_register + bytes_written);
-    memcpy(write_pkt.write_data, val + bytes_written, write_pkt.rx_bytes);
-
-    ret =  hidraw_write_packet(mxt, &write_pkt, &byte_count);
-    if (ret) {
-      mxt_err(mxt->ctx, "read error %s (%d)", strerror(errno), errno);
-      ret = mxt_errno_to_rc(errno);
-      goto close;
+    ret = hidraw_open(mxt);
+    if (ret)
+    {
+        return ret;
     }
-    bytes_written += byte_count;
-    mxt_dbg(mxt->ctx, "Bytes Written:%d", bytes_written);
 
-    struct hid_packet response_pkt;
-    memset(&response_pkt, 0x00, sizeof(struct hid_packet));
+    int bytes_written = 0;
 
-    ret = hidraw_read_response(mxt, &response_pkt, 2);
-    if (response_pkt.result != MXT_HID_READ_SUCCESS)
-      mxt_err(mxt->ctx, "HIDRAW write failed: 0x%x",
-              response_pkt.result);
-  }
+    while (bytes_written < datalength)
+    {
+        write_pkt.rx_bytes = MXT_HID_ADDR_SIZE +
+                             (datalength - bytes_written <= MXT_HID_WRITE_DATA_SIZE ? datalength - bytes_written : MXT_HID_WRITE_DATA_SIZE);
+        write_pkt.address = htole16(start_register + bytes_written);
+        memcpy(write_pkt.write_data, val + bytes_written, write_pkt.rx_bytes);
+
+        ret =  hidraw_write_packet(mxt, &write_pkt, &byte_count);
+        if (ret)
+        {
+            mxt_err(mxt->ctx, "read error %s (%d)", strerror(errno), errno);
+            ret = mxt_errno_to_rc(errno);
+            goto close;
+        }
+        bytes_written += byte_count;
+        mxt_dbg(mxt->ctx, "Bytes Written:%d", bytes_written);
+
+        struct hid_packet response_pkt;
+        memset(&response_pkt, 0x00, sizeof(struct hid_packet));
+
+        ret = hidraw_read_response(mxt, &response_pkt, 2);
+        if (response_pkt.result != MXT_HID_READ_SUCCESS)
+            mxt_err(mxt->ctx, "HIDRAW write failed: 0x%x",
+                    response_pkt.result);
+    }
 
 close:
-  close(mxt->conn->hidraw.fd);
-  mxt->conn->hidraw.fd = 0;
-  return MXT_SUCCESS;
+    close(mxt->conn->hidraw.fd);
+    mxt->conn->hidraw.fd = 0;
+    return MXT_SUCCESS;
 }

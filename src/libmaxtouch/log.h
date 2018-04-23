@@ -41,16 +41,17 @@
 
 
 /* Log levels - designed to match Android's log levels */
-enum mxt_log_level {
-  LOG_UNKNOWN = 0,
-  LOG_DEFAULT = 1,
-  LOG_VERBOSE = 2,
-  LOG_DEBUG   = 3,
-  LOG_INFO    = 4,
-  LOG_WARN    = 5,
-  LOG_ERROR   = 6,
-  LOG_FATAL   = 7,
-  LOG_SILENT  = 8
+enum mxt_log_level
+{
+    LOG_UNKNOWN = 0,
+    LOG_DEFAULT = 1,
+    LOG_VERBOSE = 2,
+    LOG_DEBUG   = 3,
+    LOG_INFO    = 4,
+    LOG_WARN    = 5,
+    LOG_ERROR   = 6,
+    LOG_FATAL   = 7,
+    LOG_SILENT  = 8
 };
 
 struct libmaxtouch_ctx;

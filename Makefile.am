@@ -120,7 +120,7 @@ dist-hook:
 	echo $(VERSION) > $(distdir)/VERSION
 
 indent:
-	astyle --style=linux --indent=spaces=2 \
+	astyle --style=allman --add-brackets --indent=spaces=4 --indent-switches --mode=c --suffix=none \
 	$(mxt_app_SOURCES) $(libmaxtouch_la_SOURCES)
 
 ctags:

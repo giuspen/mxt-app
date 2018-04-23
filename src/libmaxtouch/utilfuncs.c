@@ -55,54 +55,62 @@
 /// \brief Print out info block
 void mxt_print_info_block(struct mxt_device *mxt)
 {
-  int i;
-  int report_id = 1;
-  int report_id_start, report_id_end;
-  struct mxt_object obj;
-  struct mxt_id_info *id = mxt->info.id;
+    int i;
+    int report_id = 1;
+    int report_id_start, report_id_end;
+    struct mxt_object obj;
+    struct mxt_id_info *id = mxt->info.id;
 
-  /* Show the Version Info */
-  printf("\nFamily: %u Variant: %u Firmware V%u.%u.%02X Objects: %u\n",
-         id->family, id->variant,
-         id->version >> 4,
-         id->version & 0x0F,
-         id->build, id->num_objects);
+    /* Show the Version Info */
+    printf("\nFamily: %u Variant: %u Firmware V%u.%u.%02X Objects: %u\n",
+           id->family, id->variant,
+           id->version >> 4,
+           id->version & 0x0F,
+           id->build, id->num_objects);
 
-  printf("Matrix size: X%uY%u\n",
-         id->matrix_x_size, id->matrix_y_size);
-  /* Show the CRC */
-  printf("Information Block CRC: 0x%06X\n\n", mxt->info.crc);
+    printf("Matrix size: X%uY%u\n",
+           id->matrix_x_size, id->matrix_y_size);
+    /* Show the CRC */
+    printf("Information Block CRC: 0x%06X\n\n", mxt->info.crc);
 
-  /* Show the object table */
-  printf("Type Start Size Instances ReportIds Name\n");
-  printf("-----------------------------------------------------------------\n");
-  for (i = 0; i < id->num_objects; i++) {
-    obj = mxt->info.objects[i];
+    /* Show the object table */
+    printf("Type Start Size Instances ReportIds Name\n");
+    printf("-----------------------------------------------------------------\n");
+    for (i = 0; i < id->num_objects; i++)
+    {
+        obj = mxt->info.objects[i];
 
-    if (obj.num_report_ids > 0) {
-      report_id_start = report_id;
-      report_id_end = report_id_start + obj.num_report_ids * MXT_INSTANCES(obj) - 1;
-      report_id = report_id_end + 1;
-    } else {
-      report_id_start = 0;
-      report_id_end = 0;
+        if (obj.num_report_ids > 0)
+        {
+            report_id_start = report_id;
+            report_id_end = report_id_start + obj.num_report_ids * MXT_INSTANCES(obj) - 1;
+            report_id = report_id_end + 1;
+        }
+        else
+        {
+            report_id_start = 0;
+            report_id_end = 0;
+        }
+
+        printf("T%-3u %4u  %4u    %2u       %2u-%-2u   ",
+               obj.type,
+               mxt_get_start_position(obj, 0),
+               MXT_SIZE(obj),
+               MXT_INSTANCES(obj),
+               report_id_start, report_id_end);
+
+        const char *obj_name = mxt_get_object_name(obj.type);
+        if (obj_name)
+        {
+            printf("%s\n", obj_name);
+        }
+        else
+        {
+            printf("UNKNOWN_T%d\n", obj.type);
+        }
     }
 
-    printf("T%-3u %4u  %4u    %2u       %2u-%-2u   ",
-           obj.type,
-           mxt_get_start_position(obj, 0),
-           MXT_SIZE(obj),
-           MXT_INSTANCES(obj),
-           report_id_start, report_id_end);
-
-    const char *obj_name = mxt_get_object_name(obj.type);
-    if (obj_name)
-      printf("%s\n", obj_name);
-    else
-      printf("UNKNOWN_T%d\n", obj.type);
-  }
-
-  printf("\n");
+    printf("\n");
 }
 
 //******************************************************************************
@@ -110,12 +118,13 @@ void mxt_print_info_block(struct mxt_device *mxt)
 /// \return null terminated string, or NULL for object not found
 const char *mxt_get_object_name(uint8_t objtype)
 {
-  switch(objtype) {
-    OBJECT_LIST(F_SWITCH)
+    switch(objtype)
+    {
+            OBJECT_LIST(F_SWITCH)
 
-  default:
-    return NULL;
-  }
+        default:
+            return NULL;
+    }
 }
 //******************************************************************************
 /// \brief Menu function to read values from object
@@ -124,71 +133,88 @@ int mxt_read_object(struct mxt_device *mxt, uint16_t object_type,
                     uint8_t instance, uint16_t address,
                     size_t count, bool format)
 {
-  uint8_t *databuf;
-  uint16_t object_address = 0;
-  uint16_t i;
-  int ret;
+    uint8_t *databuf;
+    uint16_t object_address = 0;
+    uint16_t i;
+    int ret;
 
-  if (object_type > 0) {
-    object_address = mxt_get_object_address(mxt, object_type, instance);
-    if (object_address == OBJECT_NOT_FOUND) {
-      printf("No such object\n");
-      return MXT_ERROR_OBJECT_NOT_FOUND;
+    if (object_type > 0)
+    {
+        object_address = mxt_get_object_address(mxt, object_type, instance);
+        if (object_address == OBJECT_NOT_FOUND)
+        {
+            printf("No such object\n");
+            return MXT_ERROR_OBJECT_NOT_FOUND;
+        }
+
+        mxt_dbg(mxt->ctx, "T%u address:%u offset:%u", object_type,
+                object_address, address);
+        address = object_address + address;
+
+        if (count == 0)
+        {
+            count = mxt_get_object_size(mxt, object_type);
+        }
+    }
+    else if (count == 0)
+    {
+        mxt_err(mxt->ctx, "No length information");
+        return MXT_ERROR_BAD_INPUT;
     }
 
-    mxt_dbg(mxt->ctx, "T%u address:%u offset:%u", object_type,
-            object_address, address);
-    address = object_address + address;
-
-    if (count == 0) {
-      count = mxt_get_object_size(mxt, object_type);
-    }
-  } else if (count == 0) {
-    mxt_err(mxt->ctx, "No length information");
-    return MXT_ERROR_BAD_INPUT;
-  }
-
-  databuf = (uint8_t *)calloc(count, sizeof(uint8_t));
-  if (databuf == NULL) {
-    mxt_err(mxt->ctx, "Memory allocation failure");
-    return MXT_ERROR_NO_MEM;
-  }
-
-  ret = mxt_read_register(mxt, databuf, address, count);
-  if (ret) {
-    printf("Read error\n");
-    goto free;
-  }
-
-  if (format) {
-    if (object_type > 0) {
-      const char *obj_name = mxt_get_object_name(object_type);
-      if (obj_name)
-        printf("%s\n\n", obj_name);
-      else
-        printf("UNKNOWN_T%d\n\n", object_type);
+    databuf = (uint8_t *)calloc(count, sizeof(uint8_t));
+    if (databuf == NULL)
+    {
+        mxt_err(mxt->ctx, "Memory allocation failure");
+        return MXT_ERROR_NO_MEM;
     }
 
-    for (i = 0; i < count; i++) {
-      printf("%02d:\t0x%02X\t%3d\t" BYTETOBINARYPATTERN "\n",
-             address - object_address + i,
-             databuf[i],
-             databuf[i],
-             BYTETOBINARY(databuf[i]));
-    }
-  } else {
-    for (i = 0; i < count; i++) {
-      printf("%02X ", databuf[i]);
+    ret = mxt_read_register(mxt, databuf, address, count);
+    if (ret)
+    {
+        printf("Read error\n");
+        goto free;
     }
 
-    printf("\n");
-  }
+    if (format)
+    {
+        if (object_type > 0)
+        {
+            const char *obj_name = mxt_get_object_name(object_type);
+            if (obj_name)
+            {
+                printf("%s\n\n", obj_name);
+            }
+            else
+            {
+                printf("UNKNOWN_T%d\n\n", object_type);
+            }
+        }
 
-  ret = MXT_SUCCESS;
+        for (i = 0; i < count; i++)
+        {
+            printf("%02d:\t0x%02X\t%3d\t" BYTETOBINARYPATTERN "\n",
+                   address - object_address + i,
+                   databuf[i],
+                   databuf[i],
+                   BYTETOBINARY(databuf[i]));
+        }
+    }
+    else
+    {
+        for (i = 0; i < count; i++)
+        {
+            printf("%02X ", databuf[i]);
+        }
+
+        printf("\n");
+    }
+
+    ret = MXT_SUCCESS;
 
 free:
-  free(databuf);
-  return ret;
+    free(databuf);
+    return ret;
 }
 
 
@@ -199,45 +225,54 @@ int mxt_handle_write_cmd(struct mxt_device *mxt, const uint16_t type,
                          uint16_t count, const uint8_t inst, uint16_t address,
                          int argc, char *argv[])
 {
-  uint16_t obj_addr = 0;
-  unsigned char databuf[BUF_SIZE];
-  unsigned char *p_databuf = databuf;
-  int ret = MXT_SUCCESS;
+    uint16_t obj_addr = 0;
+    unsigned char databuf[BUF_SIZE];
+    unsigned char *p_databuf = databuf;
+    int ret = MXT_SUCCESS;
 
-  if (type > 0) {
-    obj_addr = mxt_get_object_address(mxt, type, inst);
-    if (obj_addr == OBJECT_NOT_FOUND) {
-      fprintf(stderr, "No such object\n");
-      return MXT_ERROR_OBJECT_NOT_FOUND;
+    if (type > 0)
+    {
+        obj_addr = mxt_get_object_address(mxt, type, inst);
+        if (obj_addr == OBJECT_NOT_FOUND)
+        {
+            fprintf(stderr, "No such object\n");
+            return MXT_ERROR_OBJECT_NOT_FOUND;
+        }
+
+        mxt_verb(mxt->ctx, "T%u address:%u offset:%u", type, obj_addr, address);
+        address = obj_addr + address;
+
+        if (count == 0)
+        {
+            count = mxt_get_object_size(mxt, type);
+        }
+    }
+    else if (count == 0)
+    {
+        fprintf(stderr, "Not enough arguments!\n");
+        return MXT_ERROR_BAD_INPUT;
     }
 
-    mxt_verb(mxt->ctx, "T%u address:%u offset:%u", type, obj_addr, address);
-    address = obj_addr + address;
+    /* Parse unprocessed arguments */
+    while (optind < argc)
+    {
+        ret = mxt_convert_hex(argv[optind++], p_databuf, &count, sizeof(databuf) - (p_databuf - databuf));
 
-    if (count == 0) {
-      count = mxt_get_object_size(mxt, type);
+        if (ret || count == 0)
+        {
+            fprintf(stderr, "Hex convert error\n");
+            return MXT_ERROR_BAD_INPUT;
+        }
+        p_databuf += count;
     }
-  } else if (count == 0) {
-    fprintf(stderr, "Not enough arguments!\n");
-    return MXT_ERROR_BAD_INPUT;
-  }
 
-  /* Parse unprocessed arguments */
-  while (optind < argc) {
-    ret = mxt_convert_hex(argv[optind++], p_databuf, &count, sizeof(databuf) - (p_databuf - databuf));
-
-    if (ret || count == 0) {
-      fprintf(stderr, "Hex convert error\n");
-      return MXT_ERROR_BAD_INPUT;
+    ret = mxt_write_register(mxt, databuf, address, (p_databuf - databuf));
+    if (ret)
+    {
+        fprintf(stderr, "Write error\n");
     }
-    p_databuf += count;
-  }
 
-  ret = mxt_write_register(mxt, databuf, address, (p_databuf - databuf));
-  if (ret)
-    fprintf(stderr, "Write error\n");
-
-  return MXT_SUCCESS;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -245,18 +280,25 @@ int mxt_handle_write_cmd(struct mxt_device *mxt, const uint16_t type,
 /// \return #mxt_rc
 static int to_digit(const char hex, char *const decimal)
 {
-  if (hex >= '0' && hex <= '9')
-    *decimal = hex - '0';
-  else if (hex >= 'A' && hex <= 'F')
-    *decimal = hex - 'A' + 10;
-  else if (hex >= 'a' && hex <= 'f')
-    *decimal = hex - 'a' + 10;
-  else {
-    *decimal = 0;
-    return MXT_ERROR_BAD_INPUT;
-  }
+    if (hex >= '0' && hex <= '9')
+    {
+        *decimal = hex - '0';
+    }
+    else if (hex >= 'A' && hex <= 'F')
+    {
+        *decimal = hex - 'A' + 10;
+    }
+    else if (hex >= 'a' && hex <= 'f')
+    {
+        *decimal = hex - 'a' + 10;
+    }
+    else
+    {
+        *decimal = 0;
+        return MXT_ERROR_BAD_INPUT;
+    }
 
-  return MXT_SUCCESS;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -265,48 +307,57 @@ static int to_digit(const char hex, char *const decimal)
 int mxt_convert_hex(char *hex, unsigned char *databuf,
                     uint16_t *count, unsigned int buf_size)
 {
-  unsigned int pos = 0;
-  uint16_t datapos = 0;
-  char highnibble;
-  char lownibble;
-  char high_dec_nibble;
-  char low_dec_nibble;
-  int ret = MXT_SUCCESS;
+    unsigned int pos = 0;
+    uint16_t datapos = 0;
+    char highnibble;
+    char lownibble;
+    char high_dec_nibble;
+    char low_dec_nibble;
+    int ret = MXT_SUCCESS;
 
-  while (1) {
-    highnibble = *(hex + pos);
-    lownibble = *(hex + pos + 1);
+    while (1)
+    {
+        highnibble = *(hex + pos);
+        lownibble = *(hex + pos + 1);
 
-    /* end of string */
-    if (highnibble == '\0' || highnibble == '\n')
-      break;
+        /* end of string */
+        if (highnibble == '\0' || highnibble == '\n')
+        {
+            break;
+        }
 
-    /* uneven number of hex digits */
-    if (lownibble == '\0' || lownibble == '\n') {
-      ret = MXT_ERROR_BAD_INPUT;
-      break;
+        /* uneven number of hex digits */
+        if (lownibble == '\0' || lownibble == '\n')
+        {
+            ret = MXT_ERROR_BAD_INPUT;
+            break;
+        }
+
+        if (pos > buf_size)
+        {
+            ret = MXT_ERROR_NO_MEM;
+            break;
+        }
+
+        ret = to_digit(highnibble, &high_dec_nibble);
+        if (ret)
+        {
+            break;
+        }
+
+        ret = to_digit(lownibble, &low_dec_nibble);
+        if (ret)
+        {
+            break;
+        }
+
+        *(databuf + datapos) = (high_dec_nibble << 4) | low_dec_nibble;
+        datapos++;
+        pos += 2;
     }
 
-    if (pos > buf_size) {
-      ret = MXT_ERROR_NO_MEM;
-      break;
-    }
-
-    ret = to_digit(highnibble, &high_dec_nibble);
-    if (ret)
-      break;
-
-    ret = to_digit(lownibble, &low_dec_nibble);
-    if (ret)
-      break;
-
-    *(databuf + datapos) = (high_dec_nibble << 4) | low_dec_nibble;
-    datapos++;
-    pos += 2;
-  }
-
-  *count = datapos;
-  return ret;
+    *count = datapos;
+    return ret;
 }
 
 //******************************************************************************
@@ -316,23 +367,26 @@ int mxt_convert_hex(char *hex, unsigned char *databuf,
 /// \return #mxt_rc
 int mxt_print_timestamp(FILE *stream, bool date)
 {
-  struct timeval tv;
-  time_t nowtime;
-  struct tm *nowtm;
-  char tmbuf[64];
-  int ret;
+    struct timeval tv;
+    time_t nowtime;
+    struct tm *nowtm;
+    char tmbuf[64];
+    int ret;
 
-  gettimeofday(&tv, NULL);
-  nowtime = tv.tv_sec;
-  nowtm = localtime(&nowtime);
+    gettimeofday(&tv, NULL);
+    nowtime = tv.tv_sec;
+    nowtm = localtime(&nowtime);
 
-  if (date) {
-    strftime(tmbuf, sizeof(tmbuf), "%c", nowtm);
-    ret = fprintf(stream, "%s", tmbuf);
-  } else {
-    strftime(tmbuf, sizeof(tmbuf), "%H:%M:%S", nowtm);
-    ret = fprintf(stream, "%s.%06ld", tmbuf, tv.tv_usec);
-  }
+    if (date)
+    {
+        strftime(tmbuf, sizeof(tmbuf), "%c", nowtm);
+        ret = fprintf(stream, "%s", tmbuf);
+    }
+    else
+    {
+        strftime(tmbuf, sizeof(tmbuf), "%H:%M:%S", nowtm);
+        ret = fprintf(stream, "%s.%06ld", tmbuf, tv.tv_usec);
+    }
 
-  return (ret < 0) ? MXT_ERROR_IO : MXT_SUCCESS;
+    return (ret < 0) ? MXT_ERROR_IO : MXT_SUCCESS;
 }

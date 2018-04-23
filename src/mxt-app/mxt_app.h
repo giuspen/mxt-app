@@ -62,31 +62,32 @@
 
 //******************************************************************************
 /// \brief Commands for mxt-app
-typedef enum mxt_app_cmd_t {
-  CMD_NONE,
-  CMD_QUERY,
-  CMD_INFO,
-  CMD_TEST,
-  CMD_WRITE,
-  CMD_READ,
-  CMD_GOLDEN_REFERENCES,
-  CMD_BRIDGE_CLIENT,
-  CMD_BRIDGE_SERVER,
-  CMD_SERIAL_DATA,
-  CMD_FLASH,
-  CMD_RESET,
-  CMD_RESET_BOOTLOADER,
-  CMD_BOOTLOADER_VERSION,
-  CMD_BACKUP,
-  CMD_CALIBRATE,
-  CMD_DEBUG_DUMP,
-  CMD_LOAD_CFG,
-  CMD_SAVE_CFG,
-  CMD_MESSAGES,
-  CMD_SELF_CAP_TUNE_CONFIG,
-  CMD_SELF_CAP_TUNE_NVRAM,
-  CMD_ZERO_CFG,
-  CMD_CRC_CHECK,
+typedef enum mxt_app_cmd_t
+{
+    CMD_NONE,
+    CMD_QUERY,
+    CMD_INFO,
+    CMD_TEST,
+    CMD_WRITE,
+    CMD_READ,
+    CMD_GOLDEN_REFERENCES,
+    CMD_BRIDGE_CLIENT,
+    CMD_BRIDGE_SERVER,
+    CMD_SERIAL_DATA,
+    CMD_FLASH,
+    CMD_RESET,
+    CMD_RESET_BOOTLOADER,
+    CMD_BOOTLOADER_VERSION,
+    CMD_BACKUP,
+    CMD_CALIBRATE,
+    CMD_DEBUG_DUMP,
+    CMD_LOAD_CFG,
+    CMD_SAVE_CFG,
+    CMD_MESSAGES,
+    CMD_SELF_CAP_TUNE_CONFIG,
+    CMD_SELF_CAP_TUNE_NVRAM,
+    CMD_ZERO_CFG,
+    CMD_CRC_CHECK,
 } mxt_app_cmd;
 
 //******************************************************************************
@@ -97,41 +98,42 @@ struct t37_diagnostic_data;
 
 //******************************************************************************
 /// \brief T37 Diagnostic Data context object
-struct t37_ctx {
-  struct mxt_device *mxt;
-  struct libmaxtouch_ctx *lc;
+struct t37_ctx
+{
+    struct mxt_device *mxt;
+    struct libmaxtouch_ctx *lc;
 
-  bool self_cap;
-  bool active_stylus;
+    bool self_cap;
+    bool active_stylus;
 
-  int x_size;
-  int y_size;
+    int x_size;
+    int y_size;
 
-  int data_values;
-  int passes;
-  int pages_per_pass;
-  int stripe_width;
-  int stripe_starty;
-  int stripe_endy;
-  uint8_t page_size;
-  uint8_t mode;
+    int data_values;
+    int passes;
+    int pages_per_pass;
+    int stripe_width;
+    int stripe_starty;
+    int stripe_endy;
+    uint8_t page_size;
+    uint8_t mode;
 
-  int diag_cmd_addr;
-  int t37_addr;
-  int t37_size;
-  uint8_t t111_instances;
-  uint8_t t107_instances;
+    int diag_cmd_addr;
+    int t37_addr;
+    int t37_size;
+    uint8_t t111_instances;
+    uint8_t t107_instances;
 
-  uint16_t frame;
-  int pass;
-  int page;
-  int x_ptr;
-  int y_ptr;
+    uint16_t frame;
+    int pass;
+    int page;
+    int x_ptr;
+    int y_ptr;
 
-  struct t37_diagnostic_data *t37_buf;
-  uint16_t *data_buf;
+    struct t37_diagnostic_data *t37_buf;
+    uint16_t *data_buf;
 
-  FILE *hawkeye;
+    FILE *hawkeye;
 };
 
 int mxt_flash_firmware(struct libmaxtouch_ctx *ctx, struct mxt_device *mxt, const char *filename, const char *new_version, struct mxt_conn_info *conn);

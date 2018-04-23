@@ -41,18 +41,21 @@
 /// \return #mxt_rc
 int mxt_buf_init(struct mxt_buffer *ctx)
 {
-  int *ptr;
+    int *ptr;
 
-  ctx->capacity = BUFFER_BLOCKSIZE;
-  ctx->size = 0;
-  ptr = calloc(ctx->capacity, sizeof(uint8_t));
+    ctx->capacity = BUFFER_BLOCKSIZE;
+    ctx->size = 0;
+    ptr = calloc(ctx->capacity, sizeof(uint8_t));
 
-  if (ptr) {
-    ctx->data = (uint8_t *)ptr;
-    return MXT_SUCCESS;
-  } else {
-    return MXT_ERROR_NO_MEM;
-  }
+    if (ptr)
+    {
+        ctx->data = (uint8_t *)ptr;
+        return MXT_SUCCESS;
+    }
+    else
+    {
+        return MXT_ERROR_NO_MEM;
+    }
 }
 
 //******************************************************************************
@@ -60,23 +63,28 @@ int mxt_buf_init(struct mxt_buffer *ctx)
 /// \return #mxt_rc
 static int mxt_buf_realloc(struct mxt_buffer *ctx, size_t new_size)
 {
-  int *ptr = 0;
-  size_t new_capacity;
+    int *ptr = 0;
+    size_t new_capacity;
 
-  /* Check whether we are still within bounds of buffer */
-  if (new_size <= ctx->capacity)
-    return MXT_SUCCESS;
+    /* Check whether we are still within bounds of buffer */
+    if (new_size <= ctx->capacity)
+    {
+        return MXT_SUCCESS;
+    }
 
-  new_capacity = ctx->capacity + BUFFER_BLOCKSIZE;
-  ptr = realloc(ctx->data, new_capacity * sizeof(uint8_t));
+    new_capacity = ctx->capacity + BUFFER_BLOCKSIZE;
+    ptr = realloc(ctx->data, new_capacity * sizeof(uint8_t));
 
-  if (ptr) {
-    ctx->data = (uint8_t *)ptr;
-    ctx->capacity = new_capacity;
-    return MXT_SUCCESS;
-  } else {
-    return MXT_ERROR_NO_MEM;
-  }
+    if (ptr)
+    {
+        ctx->data = (uint8_t *)ptr;
+        ctx->capacity = new_capacity;
+        return MXT_SUCCESS;
+    }
+    else
+    {
+        return MXT_ERROR_NO_MEM;
+    }
 }
 
 //******************************************************************************
@@ -84,34 +92,37 @@ static int mxt_buf_realloc(struct mxt_buffer *ctx, size_t new_size)
 /// \return #mxt_rc
 int mxt_buf_add(struct mxt_buffer *ctx, uint8_t value)
 {
-  int ret;
-  size_t new_size = ctx->size + 1;
+    int ret;
+    size_t new_size = ctx->size + 1;
 
-  ret = mxt_buf_realloc(ctx, new_size);
-  if (ret)
-    return ret;
+    ret = mxt_buf_realloc(ctx, new_size);
+    if (ret)
+    {
+        return ret;
+    }
 
-  *(ctx->data + ctx->size) = value;
+    *(ctx->data + ctx->size) = value;
 
-  /* update new size */
-  ctx->size = new_size;
+    /* update new size */
+    ctx->size = new_size;
 
-  return MXT_SUCCESS;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
 /// \brief Free memory associated with buffer
 void mxt_buf_free(struct mxt_buffer *ctx)
 {
-  if (ctx->data) {
-    free(ctx->data);
-    ctx->data = 0;
-  }
+    if (ctx->data)
+    {
+        free(ctx->data);
+        ctx->data = 0;
+    }
 }
 
 //******************************************************************************
 /// \brief Reset buffer
 void mxt_buf_reset(struct mxt_buffer *ctx)
 {
-  ctx->size = 0;
+    ctx->size = 0;
 }

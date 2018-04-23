@@ -30,10 +30,11 @@
 
 //******************************************************************************
 /// \brief Buffer object
-struct mxt_buffer {
-  size_t size;
-  size_t capacity;
-  uint8_t *data;
+struct mxt_buffer
+{
+    size_t size;
+    size_t capacity;
+    uint8_t *data;
 };
 
 int mxt_buf_init(struct mxt_buffer *ctx);

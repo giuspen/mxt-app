@@ -50,22 +50,24 @@
 static int print_message_hex(struct mxt_device *mxt, uint8_t *msg,
                              void *context, uint8_t size)
 {
-  const uint16_t object_type = *((uint16_t*)context);
-  int j;
-  int len;
+    const uint16_t object_type = *((uint16_t*)context);
+    int j;
+    int len;
 
-  if (object_type == 0 || object_type == mxt_report_id_to_type(mxt, msg[0])) {
-    len = snprintf(mxt->msg_string, sizeof(mxt->msg_string), MSG_PREFIX);
-    for (j = 0; j < size; j++) {
-      len += snprintf(mxt->msg_string + len, sizeof(mxt->msg_string) - len,
-                      "%02X ", msg[j]);
+    if (object_type == 0 || object_type == mxt_report_id_to_type(mxt, msg[0]))
+    {
+        len = snprintf(mxt->msg_string, sizeof(mxt->msg_string), MSG_PREFIX);
+        for (j = 0; j < size; j++)
+        {
+            len += snprintf(mxt->msg_string + len, sizeof(mxt->msg_string) - len,
+                            "%02X ", msg[j]);
+        }
+
+        printf("%s\n", mxt->msg_string);
+        fflush(stdout);
     }
 
-    printf("%s\n", mxt->msg_string);
-    fflush(stdout);
-  }
-
-  return MXT_MSG_CONTINUE;
+    return MXT_MSG_CONTINUE;
 }
 
 //******************************************************************************
@@ -73,23 +75,23 @@ static int print_message_hex(struct mxt_device *mxt, uint8_t *msg,
 /// \return #mxt_rc
 int print_raw_messages(struct mxt_device *mxt, int timeout, uint16_t object_type)
 {
-  mxt_msg_reset(mxt);
+    mxt_msg_reset(mxt);
 
-  mxt_read_messages_sigint(mxt, timeout, &object_type, print_message_hex);
+    mxt_read_messages_sigint(mxt, timeout, &object_type, print_message_hex);
 
-  return MXT_SUCCESS;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
 /// \brief Handle status messages from the T6 command processor object
 void print_t6_status(uint8_t status)
 {
-  printf("T6 status: %s%s%s%s%s%s%s\n",
-         (status == 0) ? "OK":"",
-         (status & 0x04) ? "COMSERR ":"",
-         (status & 0x08) ? "CFGERR ":"",
-         (status & 0x10) ? "CAL ":"",
-         (status & 0x20) ? "SIGERR ":"",
-         (status & 0x40) ? "OFL ":"",
-         (status & 0x80) ? "RESET ":"");
+    printf("T6 status: %s%s%s%s%s%s%s\n",
+           (status == 0) ? "OK":"",
+           (status & 0x04) ? "COMSERR ":"",
+           (status & 0x08) ? "CFGERR ":"",
+           (status & 0x10) ? "CAL ":"",
+           (status & 0x20) ? "SIGERR ":"",
+           (status & 0x40) ? "OFL ":"",
+           (status & 0x80) ? "RESET ":"");
 }

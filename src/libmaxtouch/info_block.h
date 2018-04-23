@@ -38,39 +38,42 @@ struct libmaxtouch_ctx;
 #define MXT_OBJECT_SIZE_MAX 256
 
 /*! \brief Checksum element struct */
-struct mxt_raw_crc {
-  /*! CRC field */
-  uint16_t CRC;
+struct mxt_raw_crc
+{
+    /*! CRC field */
+    uint16_t CRC;
 
-  /*! CRC field: higher byte */
-  uint8_t CRC_hi;
+    /*! CRC field: higher byte */
+    uint8_t CRC_hi;
 } __attribute__((packed));
 
 /*! \brief Object table element struct */
-struct mxt_object {
-  uint8_t type;                  /*!< Object type ID */
-  uint8_t start_pos_lsb;         /*!< LSByte of the start address of the obj config structure */
-  uint8_t start_pos_msb;         /*!< MSByte of the start address of the obj config structure */
-  uint8_t size_minus_one;        /*!< Byte length of the obj config structure - 1 */
-  uint8_t instances_minus_one;   /*!< Number of objects of this obj. type - 1 */
-  uint8_t num_report_ids;        /*!< The max number of touches in a screen,
+struct mxt_object
+{
+    uint8_t type;                  /*!< Object type ID */
+    uint8_t start_pos_lsb;         /*!< LSByte of the start address of the obj config structure */
+    uint8_t start_pos_msb;         /*!< MSByte of the start address of the obj config structure */
+    uint8_t size_minus_one;        /*!< Byte length of the obj config structure - 1 */
+    uint8_t instances_minus_one;   /*!< Number of objects of this obj. type - 1 */
+    uint8_t num_report_ids;        /*!< The max number of touches in a screen,
                                   *  max number of sliders in a slider array, etc.*/
 } __attribute__((packed));
 
 /*! \brief ID Information fields in the Information Block*/
-struct mxt_id_info {
-  uint8_t family;           /*!< Device family */
-  uint8_t variant;          /*!< Device variant */
+struct mxt_id_info
+{
+    uint8_t family;           /*!< Device family */
+    uint8_t variant;          /*!< Device variant */
 
-  uint8_t version;          /*!< Firmware version (Major/minor nibbles) */
-  uint8_t build;            /*!< Firmware build number */
+    uint8_t version;          /*!< Firmware version (Major/minor nibbles) */
+    uint8_t build;            /*!< Firmware build number */
 
-  uint8_t matrix_x_size;    /*!< Matrix X Size */
-  uint8_t matrix_y_size;    /*!< Matrix Y Size */
+    uint8_t matrix_x_size;    /*!< Matrix X Size */
+    uint8_t matrix_y_size;    /*!< Matrix Y Size */
 
-  /*! Number of elements in the object table. The actual number of objects
-   * can be different if any object has more than one instance. */
-  uint8_t num_objects;
+    /*! Number of elements in the object table. The actual number of objects
+     * can be different if any object has more than one instance. */
+    uint8_t num_objects;
 } __attribute__((packed));
 
 /*! \brief Info block struct holding ID and object table data and their CRC sum.
@@ -86,21 +89,22 @@ struct mxt_id_info {
  * CRC_hi the upper 8.
  *
  */
-struct mxt_info {
-  /*! Pointer to the struct containing ID Information. */
-  struct mxt_id_info *id;
+struct mxt_info
+{
+    /*! Pointer to the struct containing ID Information. */
+    struct mxt_id_info *id;
 
-  /*! Pointer to an array of objects */
-  struct mxt_object *objects;
+    /*! Pointer to an array of objects */
+    struct mxt_object *objects;
 
-  /*! Information block checksum */
-  uint32_t crc;
+    /*! Information block checksum */
+    uint32_t crc;
 
-  /*! Raw info block data */
-  uint8_t *raw_info;
+    /*! Raw info block data */
+    uint8_t *raw_info;
 
-  /*! Number of valid report IDs */
-  uint8_t max_report_id;
+    /*! Number of valid report IDs */
+    uint8_t max_report_id;
 };
 
 /*!
@@ -110,9 +114,10 @@ struct mxt_info {
  * report id's to object type / instance (array index = report id).  Note
  * that the report ID number 0 is reserved.
  */
-struct mxt_report_id_map {
-  uint16_t object_type;  /*!< Object type */
-  uint8_t instance;      /*!< Instance number */
+struct mxt_report_id_map
+{
+    uint16_t object_type;  /*!< Object type */
+    uint8_t instance;      /*!< Instance number */
 };
 
 /*! Object types */
@@ -258,8 +263,9 @@ struct mxt_report_id_map {
   f(SPT_PROTOTYPE_T239, 239) \
   f(RESERVED_T255, 255)
 
-enum mxt_object_type {
-  OBJECT_LIST(F_ENUM)
+enum mxt_object_type
+{
+    OBJECT_LIST(F_ENUM)
 };
 
 /*! Returned by get_object_address() if object is not found */

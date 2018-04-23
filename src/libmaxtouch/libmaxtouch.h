@@ -74,107 +74,115 @@ struct mxt_conn_info;
 
 //******************************************************************************
 /// \brief Return codes
-enum mxt_rc {
-  MXT_SUCCESS = 0,                           /*!< Success */
-  MXT_INTERNAL_ERROR = 1,                    /*!< Internal error/assert */
-  MXT_ERROR_IO = 2,                          /*!< Input/output error */
-  MXT_ERROR_NO_MEM = 3,                      /*!< Memory allocation failure */
-  MXT_ERROR_TIMEOUT = 4,                     /*!< Timeout */
-  MXT_ERROR_NO_DEVICE = 5,                   /*!< Could not find a device or device went away */
-  MXT_ERROR_ACCESS = 6,                      /*!< Permission denied */
-  MXT_ERROR_NOT_SUPPORTED = 7,               /*!< Operation not allowed for this device type */
-  MXT_ERROR_INTERRUPTED = 8,                 /*!< Interrupt function call */
-  MXT_ERROR_OBJECT_NOT_FOUND = 9,            /*!< Object not available on device */
-  MXT_ERROR_NO_MESSAGE = 10,                 /*!< Received unexpected invalid message from message processor */
-  MXT_ERROR_SELF_TEST_INVALID = 11,          /*!< Self test invalid test command */
-  MXT_ERROR_SELF_TEST_ANALOG = 12,           /*!< Self test AVdd Analog power is not present */
-  MXT_ERROR_SELF_TEST_PIN_FAULT = 13,        /*!< Self test Pin fault */
-  MXT_ERROR_SELF_TEST_AND_GATE = 14,         /*!< Self test AND Gate Fault */
-  MXT_ERROR_SELF_TEST_SIGNAL_LIMIT = 15,     /*!< Self test Signal limit fault */
-  MXT_ERROR_SELF_TEST_GAIN = 16,             /*!< Self test Gain error */
-  MXT_ERROR_CHECKSUM_MISMATCH = 17,          /*!< Information block or config checksum error */
-  MXT_ERROR_BOOTLOADER_UNLOCKED = 18,        /*!< Bootloader already unlocked */
-  MXT_ERROR_BOOTLOADER_FRAME_CRC_FAIL = 19,  /*!< Bootloader CRC failure (transmission failure) */
-  MXT_ERROR_FILE_FORMAT = 20,                /*!< File format error */
-  MXT_FIRMWARE_UPDATE_NOT_REQUIRED = 21,     /*!< Device firmware already required version */
-  MXT_ERROR_BOOTLOADER_NO_ADDRESS = 22,      /*!< Could not identify bootloader address */
-  MXT_ERROR_FIRMWARE_UPDATE_FAILED = 23,     /*!< Version on device did not match version given after bootloading operation */
-  MXT_ERROR_RESET_FAILURE = 24,              /*!< Device did not reset */
-  MXT_ERROR_UNEXPECTED_DEVICE_STATE = 25,    /*!< Device in unexpected state */
-  MXT_ERROR_BAD_INPUT = 26,                  /*!< Incorrect command line parameters or menu input given */
-  MXT_ERROR_PROTOCOL_FAULT = 27,             /*!< Bridge TCP protocol parse error */
-  MXT_ERROR_CONNECTION_FAILURE = 28,         /*!< Bridge connection error */
-  MXT_ERROR_SERIAL_DATA_FAILURE = 29,        /*!< Serial data download failed */
-  MXT_ERROR_NOENT = 30,                      /*!< No such file or directory */
-  MXT_ERROR_SELFCAP_TUNE = 31,               /*!< Error processing self cap command */
-  MXT_MSG_CONTINUE = 32,                     /*!< Continue processing messages */
-  MXT_ERROR_RESERVED = 33,                   /*!< Reserved value */
-  MXT_DEVICE_IN_BOOTLOADER = 34,             /*!< Device is in bootloader mode */
-  MXT_ERROR_OBJECT_IS_VOLATILE = 35,         /*!< Object is volatile */
-  MXT_ERROR_RESERVED2 = 36,                  /*!< Reserved value */
+enum mxt_rc
+{
+    MXT_SUCCESS = 0,                           /*!< Success */
+    MXT_INTERNAL_ERROR = 1,                    /*!< Internal error/assert */
+    MXT_ERROR_IO = 2,                          /*!< Input/output error */
+    MXT_ERROR_NO_MEM = 3,                      /*!< Memory allocation failure */
+    MXT_ERROR_TIMEOUT = 4,                     /*!< Timeout */
+    MXT_ERROR_NO_DEVICE = 5,                   /*!< Could not find a device or device went away */
+    MXT_ERROR_ACCESS = 6,                      /*!< Permission denied */
+    MXT_ERROR_NOT_SUPPORTED = 7,               /*!< Operation not allowed for this device type */
+    MXT_ERROR_INTERRUPTED = 8,                 /*!< Interrupt function call */
+    MXT_ERROR_OBJECT_NOT_FOUND = 9,            /*!< Object not available on device */
+    MXT_ERROR_NO_MESSAGE = 10,                 /*!< Received unexpected invalid message from message processor */
+    MXT_ERROR_SELF_TEST_INVALID = 11,          /*!< Self test invalid test command */
+    MXT_ERROR_SELF_TEST_ANALOG = 12,           /*!< Self test AVdd Analog power is not present */
+    MXT_ERROR_SELF_TEST_PIN_FAULT = 13,        /*!< Self test Pin fault */
+    MXT_ERROR_SELF_TEST_AND_GATE = 14,         /*!< Self test AND Gate Fault */
+    MXT_ERROR_SELF_TEST_SIGNAL_LIMIT = 15,     /*!< Self test Signal limit fault */
+    MXT_ERROR_SELF_TEST_GAIN = 16,             /*!< Self test Gain error */
+    MXT_ERROR_CHECKSUM_MISMATCH = 17,          /*!< Information block or config checksum error */
+    MXT_ERROR_BOOTLOADER_UNLOCKED = 18,        /*!< Bootloader already unlocked */
+    MXT_ERROR_BOOTLOADER_FRAME_CRC_FAIL = 19,  /*!< Bootloader CRC failure (transmission failure) */
+    MXT_ERROR_FILE_FORMAT = 20,                /*!< File format error */
+    MXT_FIRMWARE_UPDATE_NOT_REQUIRED = 21,     /*!< Device firmware already required version */
+    MXT_ERROR_BOOTLOADER_NO_ADDRESS = 22,      /*!< Could not identify bootloader address */
+    MXT_ERROR_FIRMWARE_UPDATE_FAILED = 23,     /*!< Version on device did not match version given after bootloading operation */
+    MXT_ERROR_RESET_FAILURE = 24,              /*!< Device did not reset */
+    MXT_ERROR_UNEXPECTED_DEVICE_STATE = 25,    /*!< Device in unexpected state */
+    MXT_ERROR_BAD_INPUT = 26,                  /*!< Incorrect command line parameters or menu input given */
+    MXT_ERROR_PROTOCOL_FAULT = 27,             /*!< Bridge TCP protocol parse error */
+    MXT_ERROR_CONNECTION_FAILURE = 28,         /*!< Bridge connection error */
+    MXT_ERROR_SERIAL_DATA_FAILURE = 29,        /*!< Serial data download failed */
+    MXT_ERROR_NOENT = 30,                      /*!< No such file or directory */
+    MXT_ERROR_SELFCAP_TUNE = 31,               /*!< Error processing self cap command */
+    MXT_MSG_CONTINUE = 32,                     /*!< Continue processing messages */
+    MXT_ERROR_RESERVED = 33,                   /*!< Reserved value */
+    MXT_DEVICE_IN_BOOTLOADER = 34,             /*!< Device is in bootloader mode */
+    MXT_ERROR_OBJECT_IS_VOLATILE = 35,         /*!< Object is volatile */
+    MXT_ERROR_RESERVED2 = 36,                  /*!< Reserved value */
 };
 
 //******************************************************************************
 /// \brief Device connection type
-enum mxt_device_type {
-  E_SYSFS,
+enum mxt_device_type
+{
+    E_SYSFS,
 #ifdef HAVE_LIBUSB
-  E_USB,
+    E_USB,
 #endif
-  E_I2C_DEV,
-  E_HIDRAW,
+    E_I2C_DEV,
+    E_HIDRAW,
 };
 
 //******************************************************************************
 /// \brief Libmaxtouch context
-struct libmaxtouch_ctx {
-  bool query;
-  int scan_count;
-  enum mxt_log_level log_level;
-  int i2c_block_size;
+struct libmaxtouch_ctx
+{
+    bool query;
+    int scan_count;
+    enum mxt_log_level log_level;
+    int i2c_block_size;
 
-  void (*log_fn)(struct libmaxtouch_ctx *ctx, enum mxt_log_level level,
-                 const char *format, va_list args);
+    void (*log_fn)(struct libmaxtouch_ctx *ctx, enum mxt_log_level level,
+                   const char *format, va_list args);
 
-  union {
+    union
+    {
 #ifdef HAVE_LIBUSB
-    struct usb_context usb;
+        struct usb_context usb;
 #endif
-  };
+    };
 };
 
 //******************************************************************************
 /// \brief Device connection parameters
-struct mxt_conn_info {
-  enum mxt_device_type type;
-  int refcount;
+struct mxt_conn_info
+{
+    enum mxt_device_type type;
+    int refcount;
 
-  union {
-    struct i2c_dev_conn_info i2c_dev;
-    struct hidraw_conn_info hidraw;
-    struct sysfs_conn_info sysfs;
+    union
+    {
+        struct i2c_dev_conn_info i2c_dev;
+        struct hidraw_conn_info hidraw;
+        struct sysfs_conn_info sysfs;
 #ifdef HAVE_LIBUSB
-    struct usb_conn_info usb;
+        struct usb_conn_info usb;
 #endif
-  };
+    };
 };
 
 //******************************************************************************
 /// \brief Device context
-struct mxt_device {
-  struct mxt_conn_info *conn;
-  struct libmaxtouch_ctx *ctx;
-  struct mxt_info info;
-  struct mxt_report_id_map *report_id_map;
-  char msg_string[255];
+struct mxt_device
+{
+    struct mxt_conn_info *conn;
+    struct libmaxtouch_ctx *ctx;
+    struct mxt_info info;
+    struct mxt_report_id_map *report_id_map;
+    char msg_string[255];
 
-  union {
-    struct sysfs_device sysfs;
+    union
+    {
+        struct sysfs_device sysfs;
 #ifdef HAVE_LIBUSB
-    struct usb_device usb;
+        struct usb_device usb;
 #endif
-    struct i2c_dev_device i2c_dev;
-  };
+        struct i2c_dev_device i2c_dev;
+    };
 };
 
 int mxt_new(struct libmaxtouch_ctx **ctx);

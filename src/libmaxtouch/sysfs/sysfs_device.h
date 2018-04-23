@@ -32,35 +32,37 @@ struct dmesg_item;
 
 //******************************************************************************
 /// \brief sysfs device connection information
-struct sysfs_conn_info {
-  char *path;
-  bool acpi;
+struct sysfs_conn_info
+{
+    char *path;
+    bool acpi;
 };
 
 //******************************************************************************
 /// \brief sysfs device
-struct sysfs_device {
-  struct sysfs_conn_info conn;
-  char *mem_access_path;
-  char *temp_path;
-  size_t path_max;
+struct sysfs_device
+{
+    struct sysfs_conn_info conn;
+    char *mem_access_path;
+    char *temp_path;
+    size_t path_max;
 
-  bool debug_v2;
+    bool debug_v2;
 
-  uint16_t debug_v2_msg_count;
-  uint16_t debug_v2_msg_ptr;
-  uint8_t *debug_v2_msg_buf;
-  char *debug_msg_buf;
-  int debug_msg_buf_size;
-  int debug_notify_fd;
-  size_t debug_v2_size;
+    uint16_t debug_v2_msg_count;
+    uint16_t debug_v2_msg_ptr;
+    uint8_t *debug_v2_msg_buf;
+    char *debug_msg_buf;
+    int debug_msg_buf_size;
+    int debug_notify_fd;
+    size_t debug_v2_size;
 
-  int dmesg_count;
-  struct dmesg_item *dmesg_head;
-  struct dmesg_item *dmesg_ptr;
+    int dmesg_count;
+    struct dmesg_item *dmesg_head;
+    struct dmesg_item *dmesg_ptr;
 
-  unsigned long timestamp;
-  unsigned long mtimestamp;
+    unsigned long timestamp;
+    unsigned long mtimestamp;
 };
 
 int sysfs_scan(struct libmaxtouch_ctx *ctx, struct mxt_conn_info **conn);

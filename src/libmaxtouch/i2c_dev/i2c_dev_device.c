@@ -52,13 +52,13 @@ struct mxt_conn_info;
 /// \return #mxt_rc
 int i2c_dev_open(struct mxt_device *mxt)
 {
-  mxt_info
-  (
-    mxt->ctx, "Registered i2c-dev adapter:%d address:0x%x",
-    mxt->conn->i2c_dev.adapter, mxt->conn->i2c_dev.address
-  );
+    mxt_info
+    (
+        mxt->ctx, "Registered i2c-dev adapter:%d address:0x%x",
+        mxt->conn->i2c_dev.adapter, mxt->conn->i2c_dev.address
+    );
 
-  return MXT_SUCCESS;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -72,26 +72,28 @@ void i2c_dev_release(struct mxt_device *mxt)
 /// \return #mxt_rc
 static int open_and_set_slave_address(struct mxt_device *mxt, int *fd_out)
 {
-  int fd;
-  int ret;
-  char filename[20];
+    int fd;
+    int ret;
+    char filename[20];
 
-  snprintf(filename, 19, "/dev/i2c-%d", mxt->conn->i2c_dev.adapter);
-  fd = open(filename, O_RDWR);
-  if (fd < 0) {
-    mxt_err(mxt->ctx, "Could not open %s, error %s (%d)", filename, strerror(errno), errno);
-    return mxt_errno_to_rc(errno);
-  }
+    snprintf(filename, 19, "/dev/i2c-%d", mxt->conn->i2c_dev.adapter);
+    fd = open(filename, O_RDWR);
+    if (fd < 0)
+    {
+        mxt_err(mxt->ctx, "Could not open %s, error %s (%d)", filename, strerror(errno), errno);
+        return mxt_errno_to_rc(errno);
+    }
 
-  ret = ioctl(fd, I2C_SLAVE_FORCE, mxt->conn->i2c_dev.address);
-  if (ret < 0) {
-    mxt_err(mxt->ctx, "Error setting slave address, error %s (%d)", strerror(errno), errno);
-    close(fd);
-    return mxt_errno_to_rc(errno);
-  }
+    ret = ioctl(fd, I2C_SLAVE_FORCE, mxt->conn->i2c_dev.address);
+    if (ret < 0)
+    {
+        mxt_err(mxt->ctx, "Error setting slave address, error %s (%d)", strerror(errno), errno);
+        close(fd);
+        return mxt_errno_to_rc(errno);
+    }
 
-  *fd_out = fd;
-  return MXT_SUCCESS;
+    *fd_out = fd;
+    return MXT_SUCCESS;
 }
 
 //******************************************************************************
@@ -100,48 +102,59 @@ static int open_and_set_slave_address(struct mxt_device *mxt, int *fd_out)
 int i2c_dev_read_register(struct mxt_device *mxt, unsigned char *buf,
                           int start_register, int count, size_t *bytes_read)
 {
-  int fd = -ENODEV;
-  int ret;
-  char register_buf[2];
+    int fd = -ENODEV;
+    int ret;
+    char register_buf[2];
 
-  if (count > mxt->ctx->i2c_block_size)
-    count = mxt->ctx->i2c_block_size;
-
-  ret = open_and_set_slave_address(mxt, &fd);
-  if (ret)
-    return ret;
-
-  register_buf[0] = start_register & 0xff;
-  register_buf[1] = (start_register >> 8) & 0xff;
-
-  if (write(fd, &register_buf, 2) != 2) {
-    mxt_verb(mxt->ctx, "I2C retry");
-    usleep(I2C_RETRY_DELAY);
-    if (write(fd, &register_buf, 2) != 2) {
-      mxt_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
-      ret = mxt_errno_to_rc(errno);
-      goto close;
+    if (count > mxt->ctx->i2c_block_size)
+    {
+        count = mxt->ctx->i2c_block_size;
     }
-  }
 
-  ssize_t read_rc;
-  read_rc = read(fd, buf, count);
-  if (read_rc < 0) {
-    mxt_err(mxt->ctx, "Error %s (%d) reading from i2c", strerror(errno), errno);
-    ret = mxt_errno_to_rc(errno);
-    goto close;
-  } else if (read_rc == 0) {
-    /* end of file */
-    ret = MXT_ERROR_IO;
-    goto close;
-  } else {
-    *bytes_read = (size_t)read_rc;
-    ret = MXT_SUCCESS;
-  }
+    ret = open_and_set_slave_address(mxt, &fd);
+    if (ret)
+    {
+        return ret;
+    }
+
+    register_buf[0] = start_register & 0xff;
+    register_buf[1] = (start_register >> 8) & 0xff;
+
+    if (write(fd, &register_buf, 2) != 2)
+    {
+        mxt_verb(mxt->ctx, "I2C retry");
+        usleep(I2C_RETRY_DELAY);
+        if (write(fd, &register_buf, 2) != 2)
+        {
+            mxt_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
+            ret = mxt_errno_to_rc(errno);
+            goto close;
+        }
+    }
+
+    ssize_t read_rc;
+    read_rc = read(fd, buf, count);
+    if (read_rc < 0)
+    {
+        mxt_err(mxt->ctx, "Error %s (%d) reading from i2c", strerror(errno), errno);
+        ret = mxt_errno_to_rc(errno);
+        goto close;
+    }
+    else if (read_rc == 0)
+    {
+        /* end of file */
+        ret = MXT_ERROR_IO;
+        goto close;
+    }
+    else
+    {
+        *bytes_read = (size_t)read_rc;
+        ret = MXT_SUCCESS;
+    }
 
 close:
-  close(fd);
-  return ret;
+    close(fd);
+    return ret;
 }
 
 //******************************************************************************
@@ -150,38 +163,46 @@ close:
 int i2c_dev_write_register(struct mxt_device *mxt, unsigned char const *val,
                            int start_register, size_t datalength)
 {
-  int fd = -ENODEV;
-  int count;
-  int ret;
-  unsigned char *buf;
+    int fd = -ENODEV;
+    int count;
+    int ret;
+    unsigned char *buf;
 
-  ret = open_and_set_slave_address(mxt, &fd);
-  if (ret)
-    return ret;
-
-  count = datalength + 2;
-  buf = (unsigned char *)calloc(count, sizeof(unsigned char));
-
-  buf[0] = start_register & 0xff;
-  buf[1] = (start_register >> 8) & 0xff;
-  memcpy(buf + 2, val, datalength);
-
-  if (write(fd, buf, count) != count) {
-    mxt_verb(mxt->ctx, "I2C retry");
-    usleep(I2C_RETRY_DELAY);
-    if (write(fd, buf, count) != count) {
-      mxt_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
-      ret = mxt_errno_to_rc(errno);
-    } else {
-      ret = MXT_SUCCESS;
+    ret = open_and_set_slave_address(mxt, &fd);
+    if (ret)
+    {
+        return ret;
     }
-  } else {
-    ret = MXT_SUCCESS;
-  }
 
-  free(buf);
-  close(fd);
-  return ret;
+    count = datalength + 2;
+    buf = (unsigned char *)calloc(count, sizeof(unsigned char));
+
+    buf[0] = start_register & 0xff;
+    buf[1] = (start_register >> 8) & 0xff;
+    memcpy(buf + 2, val, datalength);
+
+    if (write(fd, buf, count) != count)
+    {
+        mxt_verb(mxt->ctx, "I2C retry");
+        usleep(I2C_RETRY_DELAY);
+        if (write(fd, buf, count) != count)
+        {
+            mxt_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
+            ret = mxt_errno_to_rc(errno);
+        }
+        else
+        {
+            ret = MXT_SUCCESS;
+        }
+    }
+    else
+    {
+        ret = MXT_SUCCESS;
+    }
+
+    free(buf);
+    close(fd);
+    return ret;
 }
 
 //******************************************************************************
@@ -189,24 +210,29 @@ int i2c_dev_write_register(struct mxt_device *mxt, unsigned char const *val,
 /// \return #mxt_rc
 int i2c_dev_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int count)
 {
-  int fd = -ENODEV;
-  int ret;
+    int fd = -ENODEV;
+    int ret;
 
-  ret = open_and_set_slave_address(mxt, &fd);
-  if (ret)
+    ret = open_and_set_slave_address(mxt, &fd);
+    if (ret)
+    {
+        return ret;
+    }
+
+    mxt_dbg(mxt->ctx, "Reading %d bytes", count);
+
+    if (read(fd, buf, count) != count)
+    {
+        mxt_err(mxt->ctx, "Error %s (%d) reading from i2c", strerror(errno), errno);
+        ret = mxt_errno_to_rc(errno);
+    }
+    else
+    {
+        ret = MXT_SUCCESS;
+    }
+
+    close(fd);
     return ret;
-
-  mxt_dbg(mxt->ctx, "Reading %d bytes", count);
-
-  if (read(fd, buf, count) != count) {
-    mxt_err(mxt->ctx, "Error %s (%d) reading from i2c", strerror(errno), errno);
-    ret = mxt_errno_to_rc(errno);
-  } else {
-    ret = MXT_SUCCESS;
-  }
-
-  close(fd);
-  return ret;
 }
 
 //******************************************************************************
@@ -215,26 +241,33 @@ int i2c_dev_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int coun
 int i2c_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf,
                              int count, size_t *bytes_read)
 {
-  int fd = -ENODEV;
-  int ret;
+    int fd = -ENODEV;
+    int ret;
 
-  if (count > mxt->ctx->i2c_block_size)
-    count = mxt->ctx->i2c_block_size;
+    if (count > mxt->ctx->i2c_block_size)
+    {
+        count = mxt->ctx->i2c_block_size;
+    }
 
-  ret = open_and_set_slave_address(mxt, &fd);
-  if (ret)
+    ret = open_and_set_slave_address(mxt, &fd);
+    if (ret)
+    {
+        return ret;
+    }
+
+    mxt_dbg(mxt->ctx, "Writing %d bytes", count);
+
+    if (write(fd, buf, count) != count)
+    {
+        mxt_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
+        ret = mxt_errno_to_rc(errno);
+    }
+    else
+    {
+        ret = MXT_SUCCESS;
+    }
+
+    *bytes_read = count;
+    close(fd);
     return ret;
-
-  mxt_dbg(mxt->ctx, "Writing %d bytes", count);
-
-  if (write(fd, buf, count) != count) {
-    mxt_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
-    ret = mxt_errno_to_rc(errno);
-  } else {
-    ret = MXT_SUCCESS;
-  }
-
-  *bytes_read = count;
-  close(fd);
-  return ret;
 }
