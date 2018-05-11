@@ -30,6 +30,13 @@
 #include <linux/spi/spidev.h>
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#define MAX_BUF 64
+#define USE_GPIOS
+
+#ifdef USE_GPIOS
+#define GPIO_SS  60
+#define GPIO_CHG 48
+#endif //USE_GPIOS
 
 // opcodes
 #define SPI_WRITE_REQ    0x01
@@ -60,7 +67,7 @@ static void pabort(const char *s)
 }
 
 static const char *device = "/dev/spidev1.0";
-static uint32_t mode = 3;
+static uint32_t mode = SPI_CPHA | SPI_CPOL;
 static uint8_t bits = 8;
 static char *input_file;
 static char *output_file;
@@ -93,6 +100,55 @@ uint8_t crc8(uint8_t crc, uint8_t data)
     } while (--index);
     return crc;
 }
+
+#ifdef USE_GPIOS
+static int get_gpio_value(unsigned int gpio)
+{
+    int fd, ret;
+    char buf[MAX_BUF];
+    char ch;
+
+    snprintf(buf, MAX_BUF, "/sys/class/gpio/gpio%d/value", gpio);
+
+    fd = open(buf, O_RDONLY);
+    if (fd < 0)
+    {
+        perror("gpio/get-value");
+        return fd;
+    }
+
+    ret = read(fd, &ch, 1);
+    ret = 1 == ret ? 0 : -1;
+
+    if (0 == ret)
+    {
+        ret = ch != '0' ? 1 : 0;
+    }
+
+    close(fd);
+    return ret;
+}
+static int set_gpio_value(unsigned int gpio, int value)
+{
+    int fd, ret;
+    char buf[MAX_BUF];
+
+    snprintf(buf, MAX_BUF, "/sys/class/gpio/gpio%d/value", gpio);
+
+    fd = open(buf, O_WRONLY);
+    if (fd < 0)
+    {
+        perror("gpio/set-value");
+        return fd;
+    }
+
+    ret = write(fd, value ? "1" : "0", 2);
+    ret = 2 == ret ? 0 : -1;
+
+    close(fd);
+    return ret;
+}
+#endif //USE_GPIOS
 
 static void hex_dump(const void *src, size_t length, size_t line_size, char *prefix)
 {
@@ -149,6 +205,21 @@ static int unescape(char *_dst, char *_src, size_t len)
     return ret;
 }
 
+#ifdef USE_GPIOS
+static int mxt_wait_for_chg()
+{
+    int timeout_counter = 500; // 10 msec
+
+    while (0 != get_gpio_value(GPIO_CHG) && timeout_counter > 0)
+    {
+        timeout_counter--;
+        usleep(20);
+    }
+
+    return timeout_counter > 0 ? 0 : -1;
+}
+#endif //USE_GPIOS
+
 static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size_t len_rx)
 {
     int ret;
@@ -178,14 +249,39 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
             tr.tx_buf = 0;
     }
 
+#ifdef USE_GPIOS
+    if (0 != set_gpio_value(GPIO_SS, 0))
+    {
+        pabort("can't set gpio");
+    }
+#endif //USE_GPIOS
 //  ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
     ret = write(fd, tx, len_tx);
     if (ret < 1)
         pabort("can't send spi message");
-
+#ifdef USE_GPIOS
+    if (0 != set_gpio_value(GPIO_SS, 1))
+    {
+        pabort("can't set gpio");
+    }
+    if (0 != mxt_wait_for_chg())
+    {
+        pabort("wait for CHG timeout\n");
+    }
+    if (0 != set_gpio_value(GPIO_SS, 0))
+    {
+        pabort("can't set gpio");
+    }
+#endif //USE_GPIOS
     ret = read(fd, rx, len_rx);
     if (ret < 1)
         pabort("can't recv spi message");
+#ifdef USE_GPIOS
+    if (0 != set_gpio_value(GPIO_SS, 1))
+    {
+        pabort("can't set gpio");
+    }
+#endif //USE_GPIOS
 
     if (verbose)
         hex_dump(tx, len_tx, 32, "TX");
@@ -395,6 +491,13 @@ int main(int argc, char *argv[])
 {
     int ret = 0;
     int fd;
+
+#ifdef USE_GPIOS
+    if (0 != set_gpio_value(GPIO_SS, 1))
+    {
+        pabort("can't set gpio");
+    }
+#endif //USE_GPIOS
 
     parse_opts(argc, argv);
 
