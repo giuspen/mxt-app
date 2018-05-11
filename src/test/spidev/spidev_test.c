@@ -69,8 +69,6 @@ static void pabort(const char *s)
 static const char *device = "/dev/spidev1.0";
 static uint32_t mode = SPI_CPHA | SPI_CPOL;
 static uint8_t bits = 8;
-static char *input_file;
-static char *output_file;
 static uint32_t speed = 8000000;
 static uint16_t delay;
 static int verbose;
@@ -84,7 +82,7 @@ uint8_t default_rx[HEADER_LEN + INFOBLOCK_LEN];
 uint8_t default_dummy_tx[HEADER_LEN + INFOBLOCK_LEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 char *input_tx;
 
-uint8_t crc8(uint8_t crc, uint8_t data)
+static uint8_t get_crc8_iter(uint8_t crc, uint8_t data)
 {
     static const uint8_t crcpoly = 0x8c;
     uint8_t index = 8;
@@ -100,6 +98,17 @@ uint8_t crc8(uint8_t crc, uint8_t data)
         }
     } while (--index);
     return crc;
+}
+
+static uint8_t get_header_crc(uint8_t *p_msg)
+{
+    uint8_t calc_crc = 0;
+    int i = 0;
+    for (; i < HEADER_LEN-1; i++)
+    {
+        calc_crc = get_crc8_iter(calc_crc, p_msg[i]);
+    }
+    return calc_crc;
 }
 
 #ifdef USE_GPIOS
@@ -119,11 +128,13 @@ static int get_gpio_value(unsigned int gpio)
     }
 
     ret = read(fd, &ch, 1);
-    ret = 1 == ret ? 0 : -1;
-
-    if (0 == ret)
+    if (1 == ret)
     {
         ret = ch != '0' ? 1 : 0;
+    }
+    else
+    {
+        ret = -1;
     }
 
     close(fd);
@@ -178,34 +189,6 @@ static void hex_dump(const void *src, size_t length, size_t line_size, char *pre
     }
 }
 
-/*
- *  Unescape - process hexadecimal escape character
- *      converts shell input "\x23" -> 0x23
- */
-static int unescape(char *_dst, char *_src, size_t len)
-{
-    int ret = 0;
-    int match;
-    char *src = _src;
-    char *dst = _dst;
-    unsigned int ch;
-
-    while (*src) {
-        if (*src == '\\' && *(src+1) == 'x') {
-            match = sscanf(src + 2, "%2x", &ch);
-            if (!match)
-                pabort("malformed input string");
-
-            src += 4;
-            *dst++ = (unsigned char)ch;
-        } else {
-            *dst++ = *src++;
-        }
-        ret++;
-    }
-    return ret;
-}
-
 #ifdef USE_GPIOS
 static int mxt_wait_for_chg()
 {
@@ -223,11 +206,8 @@ static int mxt_wait_for_chg()
 
 static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size_t len_rx)
 {
-    int ret;
-    int out_fd;
-    size_t len = len_tx > len_rx ? len_tx : len_rx;
+    int ret, attempt=0;
     struct spi_ioc_transfer tr = {
-        .tx_buf = (unsigned long)tx,
         .rx_buf = (unsigned long)rx,
         .delay_usecs = delay,
         .speed_hz = speed,
@@ -249,70 +229,65 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
             tr.tx_buf = 0;
     }
 
-#ifdef USE_GPIOS
-    if (0 != set_gpio_value(GPIO_SS, 0))
+    do
     {
-        pabort("can't set gpio");
-    }
-#endif //USE_GPIOS
-    tr.len = len_tx;
-    ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
-//    ret = write(fd, tx, len_tx);
-    if (ret < 1)
-        pabort("can't send spi message");
-#ifdef USE_GPIOS
-    if (0 != set_gpio_value(GPIO_SS, 1))
-    {
-        pabort("can't set gpio");
-    }
-    if (0 != mxt_wait_for_chg())
-    {
-        pabort("wait for CHG timeout\n");
-    }
-    if (0 != set_gpio_value(GPIO_SS, 0))
-    {
-        pabort("can't set gpio");
-    }
-#endif //USE_GPIOS
-    tr.len = len_rx;
-    tr.tx_buf = (unsigned long)default_dummy_tx;
-    ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
-//    ret = read(fd, rx, len_rx);
-    if (ret < 1)
-        pabort("can't recv spi message");
-#ifdef USE_GPIOS
-    if (0 != set_gpio_value(GPIO_SS, 1))
-    {
-        pabort("can't set gpio");
-    }
-#endif //USE_GPIOS
-
-    if (verbose)
-        hex_dump(tx, len_tx, 32, "TX");
-
-    if (output_file) {
-        out_fd = open(output_file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
-        if (out_fd < 0)
-            pabort("could not open output file");
-
-        ret = write(out_fd, rx, len);
-        if (ret != len)
-            pabort("not all bytes written to output file");
-
-        close(out_fd);
-    }
-
-    if (verbose || !output_file)
-    {
-        uint8_t calc_crc = 0;
-        int i = 0;
-        for (; i < HEADER_LEN-1; i++)
+        attempt++;
+        if (attempt > 1)
         {
-            calc_crc = crc8(calc_crc, rx[i]);
+            printf("Retry %d after CRC fail\n", attempt-1);
         }
+#ifdef USE_GPIOS
+        if (0 != set_gpio_value(GPIO_SS, 0))
+        {
+            pabort("can't set gpio");
+        }
+#endif //USE_GPIOS
+        /* WRITE */
+        tr.len = len_tx;
+        tr.tx_buf = (unsigned long)tx;
+        ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+        if (ret < 1)
+        {
+            pabort("can't send spi message");
+        }
+#ifdef USE_GPIOS
+        if (0 != set_gpio_value(GPIO_SS, 1))
+        {
+            pabort("can't set gpio");
+        }
+        if (0 != mxt_wait_for_chg())
+        {
+            pabort("wait for CHG timeout\n");
+        }
+        if (0 != set_gpio_value(GPIO_SS, 0))
+        {
+            pabort("can't set gpio");
+        }
+#endif //USE_GPIOS
+        /* READ */
+        tr.len = len_rx;
+        tr.tx_buf = (unsigned long)default_dummy_tx;
+        ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+        if (ret < 1)
+        {
+            pabort("can't recv spi message");
+        }
+#ifdef USE_GPIOS
+        if (0 != set_gpio_value(GPIO_SS, 1))
+        {
+            pabort("can't set gpio");
+        }
+#endif //USE_GPIOS
+
+        if (verbose)
+        {
+            hex_dump(tx, len_tx, 32, "TX");
+        }
+
         hex_dump(rx, len_rx, 32, "RX");
-        printf("calc_crc = %02X\n", calc_crc);
+        //printf("calc_crc = %02X\n", get_header_crc(rx));
     }
+    while (get_header_crc(rx) != rx[HEADER_LEN-1]);
 }
 
 static void print_usage(const char *prog)
@@ -322,8 +297,6 @@ static void print_usage(const char *prog)
          "  -s --speed    max speed (Hz)\n"
          "  -d --delay    delay (usec)\n"
          "  -b --bpw      bits per word\n"
-         "  -i --input    input data from a file (e.g. \"test.bin\")\n"
-         "  -o --output   output data to a file (e.g. \"results.bin\")\n"
          "  -l --loop     loopback\n"
          "  -H --cpha     clock phase\n"
          "  -O --cpol     clock polarity\n"
@@ -383,12 +356,6 @@ static void parse_opts(int argc, char *argv[])
         case 'b':
             bits = atoi(optarg);
             break;
-        case 'i':
-            input_file = optarg;
-            break;
-        case 'o':
-            output_file = optarg;
-            break;
         case 'l':
             mode |= SPI_LOOP;
             break;
@@ -436,59 +403,6 @@ static void parse_opts(int argc, char *argv[])
         if (mode & SPI_TX_QUAD)
             mode |= SPI_RX_QUAD;
     }
-}
-
-static void transfer_escaped_string(int fd, char *str)
-{
-    size_t size = strlen(str);
-    uint8_t *tx;
-    uint8_t *rx;
-
-    tx = malloc(size);
-    if (!tx)
-        pabort("can't allocate tx buffer");
-
-    rx = malloc(size);
-    if (!rx)
-        pabort("can't allocate rx buffer");
-
-    size = unescape((char *)tx, str, size);
-    transfer(fd, tx, rx, size, size);
-    free(rx);
-    free(tx);
-}
-
-static void transfer_file(int fd, char *filename)
-{
-    ssize_t bytes;
-    struct stat sb;
-    int tx_fd;
-    uint8_t *tx;
-    uint8_t *rx;
-
-    if (stat(filename, &sb) == -1)
-        pabort("can't stat input file");
-
-    tx_fd = open(filename, O_RDONLY);
-    if (fd < 0)
-        pabort("can't open input file");
-
-    tx = malloc(sb.st_size);
-    if (!tx)
-        pabort("can't allocate tx buffer");
-
-    rx = malloc(sb.st_size);
-    if (!rx)
-        pabort("can't allocate rx buffer");
-
-    bytes = read(tx_fd, tx, sb.st_size);
-    if (bytes != sb.st_size)
-        pabort("failed to read input file");
-
-    transfer(fd, tx, rx, sb.st_size, sb.st_size);
-    free(rx);
-    free(tx);
-    close(tx_fd);
 }
 
 int main(int argc, char *argv[])
@@ -547,24 +461,8 @@ int main(int argc, char *argv[])
     printf("bits per word: %d\n", bits);
     printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
 
-    if (input_tx && input_file)
-        pabort("only one of -p and --input may be selected");
-
-    if (input_tx)
-        transfer_escaped_string(fd, input_tx);
-    else if (input_file)
-        transfer_file(fd, input_file);
-    else
-    {
-        uint8_t calc_crc = 0;
-        int i = 0;
-        for (; i < HEADER_LEN-1; i++)
-        {
-            calc_crc = crc8(calc_crc, default_tx[i]);
-        }
-        default_tx[HEADER_LEN-1] = calc_crc;
-        transfer(fd, default_tx, default_rx, sizeof(default_tx), sizeof(default_rx));
-    }
+    default_tx[HEADER_LEN-1] = get_header_crc(default_tx);
+    transfer(fd, default_tx, default_rx, sizeof(default_tx), sizeof(default_rx));
 
     close(fd);
 
