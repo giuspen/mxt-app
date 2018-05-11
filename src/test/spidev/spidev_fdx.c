@@ -1,3 +1,6 @@
+
+// gcc spidev_fdx.c -o spidev_fdx
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
