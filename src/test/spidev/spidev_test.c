@@ -80,7 +80,8 @@ uint8_t default_tx[HEADER_LEN] = {
     SPI_READ_REQ, 0x00, 0x00, 0x07, 0x00, 0xFF,
 };
 
-uint8_t default_rx[HEADER_LEN + INFOBLOCK_LEN] = {0, };
+uint8_t default_rx[HEADER_LEN + INFOBLOCK_LEN];
+uint8_t default_dummy_tx[HEADER_LEN + INFOBLOCK_LEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 char *input_tx;
 
 uint8_t crc8(uint8_t crc, uint8_t data)
@@ -228,7 +229,6 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
     struct spi_ioc_transfer tr = {
         .tx_buf = (unsigned long)tx,
         .rx_buf = (unsigned long)rx,
-        .len = len,
         .delay_usecs = delay,
         .speed_hz = speed,
         .bits_per_word = bits,
@@ -255,8 +255,9 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
         pabort("can't set gpio");
     }
 #endif //USE_GPIOS
-//  ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
-    ret = write(fd, tx, len_tx);
+    tr.len = len_tx;
+    ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+//    ret = write(fd, tx, len_tx);
     if (ret < 1)
         pabort("can't send spi message");
 #ifdef USE_GPIOS
@@ -273,7 +274,10 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
         pabort("can't set gpio");
     }
 #endif //USE_GPIOS
-    ret = read(fd, rx, len_rx);
+    tr.len = len_rx;
+    tr.tx_buf = (unsigned long)default_dummy_tx;
+    ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+//    ret = read(fd, rx, len_rx);
     if (ret < 1)
         pabort("can't recv spi message");
 #ifdef USE_GPIOS
@@ -538,6 +542,7 @@ int main(int argc, char *argv[])
     if (ret == -1)
         pabort("can't get max speed hz");
 
+    printf("device: %s\n", device);
     printf("spi mode: 0x%x\n", mode);
     printf("bits per word: %d\n", bits);
     printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
