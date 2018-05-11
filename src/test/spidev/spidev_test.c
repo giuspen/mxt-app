@@ -71,7 +71,6 @@ static uint32_t mode = SPI_CPHA | SPI_CPOL;
 static uint8_t bits = 8;
 static uint32_t speed = 8000000;
 static uint16_t delay;
-static int verbose;
 
 uint8_t default_tx[HEADER_LEN] = {
 // read 7 bytes from address 0
@@ -279,15 +278,59 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
         }
 #endif //USE_GPIOS
 
-        if (verbose)
-        {
-            hex_dump(tx, len_tx, 32, "TX");
-        }
-
+        hex_dump(tx, len_tx, 32, "TX");
         hex_dump(rx, len_rx, 32, "RX");
         //printf("calc_crc = %02X\n", get_header_crc(rx));
     }
     while (get_header_crc(rx) != rx[HEADER_LEN-1]);
+
+#ifdef USE_GPIOS
+    while (0 == get_gpio_value(GPIO_CHG))
+    {
+        attempt = 0;
+        do
+        {
+            attempt++;
+            if (attempt > 1)
+            {
+                if (attempt > 10)
+                {
+                    printf("Too many Retries\n");
+                    break;
+                }
+                printf("Retry %d after CRC fail\n", attempt-1);
+            }
+            if (0 != set_gpio_value(GPIO_SS, 0))
+            {
+                pabort("can't set gpio");
+            }
+            /* READ */
+            tr.len = len_rx;
+            tr.tx_buf = (unsigned long)default_dummy_tx;
+            ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+            if (ret < 1)
+            {
+                pabort("can't recv spi message");
+            }
+            if (0 != set_gpio_value(GPIO_SS, 1))
+            {
+                pabort("can't set gpio");
+            }
+            hex_dump(rx, len_rx, 32, "RX");
+            if (0xff == rx[0])
+            {
+                // no msg
+                break;
+            }
+        }
+        while (get_header_crc(rx) != rx[HEADER_LEN-1]);
+        if (0xff == rx[0])
+        {
+            // no msg
+            break;
+        }
+    }
+#endif //USE_GPIOS
 }
 
 static void print_usage(const char *prog)
@@ -303,7 +346,6 @@ static void print_usage(const char *prog)
          "  -L --lsb      least significant bit first\n"
          "  -C --cs-high  chip select active high\n"
          "  -3 --3wire    SI/SO signals shared\n"
-         "  -v --verbose  Verbose (show tx buffer)\n"
          "  -p            Send data (e.g. \"1234\\xde\\xad\")\n"
          "  -N --no-cs    no chip select\n"
          "  -R --ready    slave pulls low to pause\n"
@@ -331,7 +373,6 @@ static void parse_opts(int argc, char *argv[])
             { "no-cs",   0, 0, 'N' },
             { "ready",   0, 0, 'R' },
             { "dual",    0, 0, '2' },
-            { "verbose", 0, 0, 'v' },
             { "quad",    0, 0, '4' },
             { NULL, 0, 0, 0 },
         };
@@ -376,9 +417,6 @@ static void parse_opts(int argc, char *argv[])
             break;
         case 'N':
             mode |= SPI_NO_CS;
-            break;
-        case 'v':
-            verbose = 1;
             break;
         case 'R':
             mode |= SPI_READY;
