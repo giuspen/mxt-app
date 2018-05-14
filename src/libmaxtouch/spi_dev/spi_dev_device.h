@@ -1,10 +1,6 @@
 #pragma once
 //------------------------------------------------------------------------------
-/// \file   i2c_dev_device.h
-/// \brief  headers for MXT device low level access via i2c-dev interface
-/// \author Nick Dyer
-//------------------------------------------------------------------------------
-// Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech UL Ltd. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -28,26 +24,22 @@
 // EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //------------------------------------------------------------------------------
 
-#define I2C_DEV_MAX_BLOCK 255
+#define SPI_DEV_MAX_BLOCK  64
 
-//******************************************************************************
-/// \brief Device information for i2c-dev backend
-struct i2c_dev_conn_info
+struct spi_dev_conn_info
 {
-    int adapter;
-    int address;
+    int bus;
+    int chipselect;
 };
 
-//******************************************************************************
-/// \brief Device information for i2c-dev backend
-struct i2c_dev_device
+struct spi_dev_device
 {
 };
 
-int i2c_dev_read_register(struct mxt_device *mxt, unsigned char *buf, int start_register, int count, size_t *bytes_read);
+int spi_dev_read_register(struct mxt_device *mxt, unsigned char *buf, int start_register, int count, size_t *bytes_read);
 
-int i2c_dev_write_register(struct mxt_device *mxt, unsigned char const *buf, int start_register, size_t count);
+int spi_dev_write_register(struct mxt_device *mxt, unsigned char const *buf, int start_register, size_t count);
 
-int i2c_dev_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int count);
+int spi_dev_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int count);
 
-int i2c_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf, int count, size_t *bytes_transferred);
+int spi_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf, int count, size_t *bytes_transferred);

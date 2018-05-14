@@ -163,7 +163,8 @@ static void print_usage(char *prog_name)
             "  -q [--query]               : scan for devices\n"
             "  -d [--device] DEVICESTRING : DEVICESTRING as output by --query\n\n"
             "  Examples:\n"
-            "    -d i2c-dev:ADAPTER:ADDRESS : raw i2c device, eg \"i2c-dev:2-004a\"\n"
+            "    -d i2c-dev:ADAPTER-ADDRESS : raw i2c device, eg \"i2c-dev:2-004a\"\n"
+            "    -d spi-dev:BUS-CHIPSELECT  : raw spi device, eg \"spi-dev:1-0\"\n"
 #ifdef HAVE_LIBUSB
             "    -d usb:BUS-DEVICE          : USB device, eg \"usb:001-003\"\n"
 #endif
@@ -513,7 +514,7 @@ int main (int argc, char *argv[])
             case 'd':
                 if (optarg)
                 {
-                    if (!strncmp(optarg, "i2c-dev:", 8))
+                    if (0 == strncmp(optarg, "i2c-dev:", 8))
                     {
                         ret = mxt_new_conn(&conn, E_I2C_DEV);
                         if (ret)
@@ -521,8 +522,22 @@ int main (int argc, char *argv[])
                             return ret;
                         }
 
-                        if (sscanf(optarg, "i2c-dev:%d-%x",
-                                   &conn->i2c_dev.adapter, &conn->i2c_dev.address) != 2)
+                        if (2 != sscanf(optarg, "i2c-dev:%d-%x", &conn->i2c_dev.adapter, &conn->i2c_dev.address))
+                        {
+                            fprintf(stderr, "Invalid device string %s\n", optarg);
+                            conn = mxt_unref_conn(conn);
+                            return MXT_ERROR_NO_MEM;
+                        }
+                    }
+                    else if (0 == strncmp(optarg, "spi-dev:", 8))
+                    {
+                        ret = mxt_new_conn(&conn, E_SPI_DEV);
+                        if (ret)
+                        {
+                            return ret;
+                        }
+
+                        if (2 != sscanf(optarg, "spi-dev:%d-%d", &conn->spi_dev.bus, &conn->spi_dev.chipselect))
                         {
                             fprintf(stderr, "Invalid device string %s\n", optarg);
                             conn = mxt_unref_conn(conn);

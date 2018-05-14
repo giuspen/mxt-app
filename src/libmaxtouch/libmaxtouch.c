@@ -211,7 +211,9 @@ int mxt_new_device(struct libmaxtouch_ctx *ctx, struct mxt_conn_info *conn,
             break;
 
         case E_I2C_DEV:
-            ret = i2c_dev_open(new_dev);
+        case E_SPI_DEV:
+            // nothing to do for i2c
+            // nothing to do for spi
             break;
 
 #ifdef HAVE_LIBUSB
@@ -281,7 +283,9 @@ void mxt_free_device(struct mxt_device *mxt)
             break;
 
         case E_I2C_DEV:
-            i2c_dev_release(mxt);
+        case E_SPI_DEV:
+            // nothing to do for i2c
+            // nothing to do for spi
             break;
 
 #ifdef HAVE_LIBUSB
@@ -309,8 +313,10 @@ void mxt_free_device(struct mxt_device *mxt)
 //******************************************************************************
 /// \brief  Read register from MXT chip
 /// \return #mxt_rc
-static int mxt_read_register_block(struct mxt_device *mxt, uint8_t *buf,
-                                   int start_register, int count,
+static int mxt_read_register_block(struct mxt_device *mxt,
+                                   uint8_t *buf,
+                                   int start_register,
+                                   int count,
                                    size_t *bytes)
 {
     int ret;
@@ -323,6 +329,10 @@ static int mxt_read_register_block(struct mxt_device *mxt, uint8_t *buf,
 
         case E_I2C_DEV:
             ret = i2c_dev_read_register(mxt, buf, start_register, count, bytes);
+            break;
+
+        case E_SPI_DEV:
+            ret = spi_dev_read_register(mxt, buf, start_register, count, bytes);
             break;
 
 #ifdef HAVE_LIBUSB
@@ -346,20 +356,21 @@ static int mxt_read_register_block(struct mxt_device *mxt, uint8_t *buf,
 //******************************************************************************
 /// \brief  Read registers from MXT chip, in blocks
 /// \return #mxt_rc
-int mxt_read_register(struct mxt_device *mxt, uint8_t *buf,
-                      int start_register, size_t count)
+int mxt_read_register(struct mxt_device *mxt, uint8_t *buf, int start_register, size_t count)
 {
     int ret;
     size_t received;
     size_t off = 0;
 
-    mxt_verb(mxt->ctx, "%s start_register:%d count:%zu", __func__,
-             start_register, count);
+    mxt_verb(mxt->ctx, "%s start_register:%d count:%zu", __func__, start_register, count);
 
     while (off < count)
     {
-        ret = mxt_read_register_block(mxt, buf + off, start_register + off,
-                                      count - off, &received);
+        ret = mxt_read_register_block(mxt,
+                                      buf + off,
+                                      start_register + off,
+                                      count - off,
+                                      &received);
         if (ret)
         {
             return ret;
@@ -376,13 +387,11 @@ int mxt_read_register(struct mxt_device *mxt, uint8_t *buf,
 //******************************************************************************
 /// \brief  Write register to MXT chip
 /// \return #mxt_rc
-int mxt_write_register(struct mxt_device *mxt, uint8_t const *buf,
-                       int start_register, size_t count)
+int mxt_write_register(struct mxt_device *mxt, uint8_t const *buf, int start_register, size_t count)
 {
     int ret;
 
-    mxt_verb(mxt->ctx, "%s start_register:%d count:%zu", __func__,
-             start_register, count);
+    mxt_verb(mxt->ctx, "%s start_register:%d count:%zu", __func__, start_register, count);
 
     switch (mxt->conn->type)
     {
