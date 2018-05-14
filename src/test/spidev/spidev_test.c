@@ -111,6 +111,25 @@ static uint8_t get_header_crc(uint8_t *p_msg)
 }
 
 #ifdef USE_GPIOS
+int set_gpio_direction(unsigned int gpio, const char *dir_in_or_out)
+{
+    int fd, ret, tx_len;
+    char buf[MAX_BUF];
+    snprintf(buf, MAX_BUF, "/sys/class/gpio/gpio%d/direction", gpio);
+    fd = open(buf, O_WRONLY);
+    if (fd < 0)
+    {
+        perror("gpio/direction");
+        return fd;
+    }
+
+    tx_len = 1 + strlen(dir_in_or_out);
+    ret = write(fd, dir_in_or_out, tx_len);
+    ret = tx_len == ret ? 0 : -1;
+
+    close(fd);
+    return ret;
+}
 static int get_gpio_value(unsigned int gpio)
 {
     int fd, ret;
@@ -203,86 +222,17 @@ static int mxt_wait_for_chg()
 }
 #endif //USE_GPIOS
 
-static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size_t len_rx)
+static void check_pending_messages(int fd, uint8_t *rx, size_t len_rx)
 {
-    int ret, attempt=0;
+    int ret, attempt;
     struct spi_ioc_transfer tr = {
         .rx_buf = (unsigned long)rx,
+        .tx_buf = (unsigned long)default_dummy_tx,
+        .len = len_rx,
         .delay_usecs = delay,
         .speed_hz = speed,
         .bits_per_word = bits,
     };
-
-    if (mode & SPI_TX_QUAD)
-        tr.tx_nbits = 4;
-    else if (mode & SPI_TX_DUAL)
-        tr.tx_nbits = 2;
-    if (mode & SPI_RX_QUAD)
-        tr.rx_nbits = 4;
-    else if (mode & SPI_RX_DUAL)
-        tr.rx_nbits = 2;
-    if (!(mode & SPI_LOOP)) {
-        if (mode & (SPI_TX_QUAD | SPI_TX_DUAL))
-            tr.rx_buf = 0;
-        else if (mode & (SPI_RX_QUAD | SPI_RX_DUAL))
-            tr.tx_buf = 0;
-    }
-
-    do
-    {
-        attempt++;
-        if (attempt > 1)
-        {
-            printf("Retry %d after CRC fail\n", attempt-1);
-        }
-#ifdef USE_GPIOS
-        if (0 != set_gpio_value(GPIO_SS, 0))
-        {
-            pabort("can't set gpio");
-        }
-#endif //USE_GPIOS
-        /* WRITE */
-        tr.len = len_tx;
-        tr.tx_buf = (unsigned long)tx;
-        ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
-        if (ret < 1)
-        {
-            pabort("can't send spi message");
-        }
-#ifdef USE_GPIOS
-        if (0 != set_gpio_value(GPIO_SS, 1))
-        {
-            pabort("can't set gpio");
-        }
-        if (0 != mxt_wait_for_chg())
-        {
-            pabort("wait for CHG timeout\n");
-        }
-        if (0 != set_gpio_value(GPIO_SS, 0))
-        {
-            pabort("can't set gpio");
-        }
-#endif //USE_GPIOS
-        /* READ */
-        tr.len = len_rx;
-        tr.tx_buf = (unsigned long)default_dummy_tx;
-        ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
-        if (ret < 1)
-        {
-            pabort("can't recv spi message");
-        }
-#ifdef USE_GPIOS
-        if (0 != set_gpio_value(GPIO_SS, 1))
-        {
-            pabort("can't set gpio");
-        }
-#endif //USE_GPIOS
-
-        hex_dump(tx, len_tx, 32, "TX");
-        hex_dump(rx, len_rx, 32, "RX");
-        //printf("calc_crc = %02X\n", get_header_crc(rx));
-    }
-    while (get_header_crc(rx) != rx[HEADER_LEN-1]);
 
 #ifdef USE_GPIOS
     while (0 == get_gpio_value(GPIO_CHG))
@@ -293,7 +243,7 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
             attempt++;
             if (attempt > 1)
             {
-                if (attempt > 10)
+                if (attempt > 5)
                 {
                     printf("Too many Retries\n");
                     break;
@@ -302,11 +252,10 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
             }
             if (0 != set_gpio_value(GPIO_SS, 0))
             {
-                pabort("can't set gpio");
+                pabort("can't set gpio val");
             }
             /* READ */
-            tr.len = len_rx;
-            tr.tx_buf = (unsigned long)default_dummy_tx;
+            memset(rx, 0, sizeof(rx));
             ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
             if (ret < 1)
             {
@@ -314,8 +263,9 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
             }
             if (0 != set_gpio_value(GPIO_SS, 1))
             {
-                pabort("can't set gpio");
+                pabort("can't set gpio val");
             }
+            hex_dump(default_dummy_tx, len_rx, 32, "TX");
             hex_dump(rx, len_rx, 32, "RX");
             if (0xff == rx[0])
             {
@@ -333,6 +283,80 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
 #endif //USE_GPIOS
 }
 
+static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size_t len_rx)
+{
+    int ret, attempt=0;
+    struct spi_ioc_transfer tr = {
+        .rx_buf = (unsigned long)rx,
+        .delay_usecs = delay,
+        .speed_hz = speed,
+        .bits_per_word = bits,
+    };
+
+    do
+    {
+        attempt++;
+        if (attempt > 1)
+        {
+            if (attempt > 5)
+            {
+                printf("Too many Retries\n");
+                break;
+            }
+            printf("Retry %d after CRC fail\n", attempt-1);
+        }
+#ifdef USE_GPIOS
+        if (0 != set_gpio_value(GPIO_SS, 0))
+        {
+            pabort("can't set gpio val");
+        }
+#endif //USE_GPIOS
+        /* WRITE */
+        tr.len = len_tx;
+        tr.tx_buf = (unsigned long)tx;
+        memset(rx, 0, sizeof(rx));
+        ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+        if (ret < 1)
+        {
+            pabort("can't send spi message");
+        }
+#ifdef USE_GPIOS
+        if (0 != set_gpio_value(GPIO_SS, 1))
+        {
+            pabort("can't set gpio val");
+        }
+        if (0 != mxt_wait_for_chg())
+        {
+            pabort("wait for CHG timeout\n");
+        }
+        if (0 != set_gpio_value(GPIO_SS, 0))
+        {
+            pabort("can't set gpio val");
+        }
+#endif //USE_GPIOS
+        /* READ */
+        tr.len = len_rx;
+        tr.tx_buf = (unsigned long)default_dummy_tx;
+        memset(rx, 0, sizeof(rx));
+        ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+        if (ret < 1)
+        {
+            pabort("can't recv spi message");
+        }
+#ifdef USE_GPIOS
+        if (0 != set_gpio_value(GPIO_SS, 1))
+        {
+            pabort("can't set gpio val");
+        }
+#endif //USE_GPIOS
+
+        hex_dump(tx, len_tx, 32, "TX");
+        hex_dump(rx, len_rx, 32, "RX");
+        //printf("calc_crc = %02X\n", get_header_crc(rx));
+    }
+    while (get_header_crc(rx) != rx[HEADER_LEN-1]);
+}
+
 static void print_usage(const char *prog)
 {
     printf("Usage: %s [-DsbdlHOLC3]\n", prog);
@@ -348,9 +372,7 @@ static void print_usage(const char *prog)
          "  -3 --3wire    SI/SO signals shared\n"
          "  -p            Send data (e.g. \"1234\\xde\\xad\")\n"
          "  -N --no-cs    no chip select\n"
-         "  -R --ready    slave pulls low to pause\n"
-         "  -2 --dual     dual transfer\n"
-         "  -4 --quad     quad transfer\n");
+         "  -R --ready    slave pulls low to pause\n");
     exit(1);
 }
 
@@ -372,8 +394,6 @@ static void parse_opts(int argc, char *argv[])
             { "3wire",   0, 0, '3' },
             { "no-cs",   0, 0, 'N' },
             { "ready",   0, 0, 'R' },
-            { "dual",    0, 0, '2' },
-            { "quad",    0, 0, '4' },
             { NULL, 0, 0, 0 },
         };
         int c;
@@ -424,22 +444,10 @@ static void parse_opts(int argc, char *argv[])
         case 'p':
             input_tx = optarg;
             break;
-        case '2':
-            mode |= SPI_TX_DUAL;
-            break;
-        case '4':
-            mode |= SPI_TX_QUAD;
-            break;
         default:
             print_usage(argv[0]);
             break;
         }
-    }
-    if (mode & SPI_LOOP) {
-        if (mode & SPI_TX_DUAL)
-            mode |= SPI_RX_DUAL;
-        if (mode & SPI_TX_QUAD)
-            mode |= SPI_RX_QUAD;
     }
 }
 
@@ -449,9 +457,13 @@ int main(int argc, char *argv[])
     int fd;
 
 #ifdef USE_GPIOS
+    if (0 != set_gpio_direction(GPIO_SS, "out") || 0 != set_gpio_direction(GPIO_CHG, "in"))
+    {
+        pabort("can't set gpio dir");
+    }
     if (0 != set_gpio_value(GPIO_SS, 1))
     {
-        pabort("can't set gpio");
+        pabort("can't set gpio val");
     }
 #endif //USE_GPIOS
 
@@ -499,8 +511,16 @@ int main(int argc, char *argv[])
     printf("bits per word: %d\n", bits);
     printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
 
+#ifdef USE_GPIOS
+    check_pending_messages(fd, default_rx, sizeof(default_rx));
+#endif //USE_GPIOS
+
     default_tx[HEADER_LEN-1] = get_header_crc(default_tx);
     transfer(fd, default_tx, default_rx, sizeof(default_tx), sizeof(default_rx));
+
+#ifdef USE_GPIOS
+    check_pending_messages(fd, default_rx, sizeof(default_rx));
+#endif //USE_GPIOS
 
     close(fd);
 
