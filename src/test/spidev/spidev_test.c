@@ -405,7 +405,7 @@ static void parse_opts(int argc, char *argv[])
             device = optarg;
             break;
         case 's':
-            speed = atoi(optarg);
+            spi_max_speed_hz = atoi(optarg);
             break;
         case 'd':
             delay = atoi(optarg);
