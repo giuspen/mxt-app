@@ -57,8 +57,8 @@
 // 5 CRC
 // 6+ Data[]
 
-#define HEADER_LEN 6
-#define INFOBLOCK_LEN 7
+#define SPI_HEADER_LEN 6
+#define MXT_INFOBLOCK_LEN 7
 
 static void pabort(const char *s)
 {
@@ -67,18 +67,18 @@ static void pabort(const char *s)
 }
 
 static const char *device = "/dev/spidev1.0";
-static uint32_t mode = SPI_CPHA | SPI_CPOL;
-static uint8_t bits = 8;
-static uint32_t speed = 8000000;
+static uint32_t spi_mode32 = SPI_CPHA | SPI_CPOL;
+static uint8_t spi_bits_per_word = 8;
+static uint32_t spi_max_speed_hz = 8000000;
 static uint16_t delay;
 
-uint8_t default_tx[HEADER_LEN] = {
+uint8_t default_tx[SPI_HEADER_LEN] = {
 // read 7 bytes from address 0
     SPI_READ_REQ, 0x00, 0x00, 0x07, 0x00, 0xFF,
 };
 
-uint8_t default_rx[HEADER_LEN + INFOBLOCK_LEN];
-uint8_t default_dummy_tx[HEADER_LEN + INFOBLOCK_LEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+uint8_t default_rx[SPI_HEADER_LEN + MXT_INFOBLOCK_LEN];
+uint8_t default_dummy_tx[SPI_HEADER_LEN + MXT_INFOBLOCK_LEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 char *input_tx;
 
 static uint8_t get_crc8_iter(uint8_t crc, uint8_t data)
@@ -103,7 +103,7 @@ static uint8_t get_header_crc(uint8_t *p_msg)
 {
     uint8_t calc_crc = 0;
     int i = 0;
-    for (; i < HEADER_LEN-1; i++)
+    for (; i < SPI_HEADER_LEN-1; i++)
     {
         calc_crc = get_crc8_iter(calc_crc, p_msg[i]);
     }
@@ -113,7 +113,7 @@ static uint8_t get_header_crc(uint8_t *p_msg)
 #ifdef USE_GPIOS
 int set_gpio_direction(unsigned int gpio, const char *dir_in_or_out)
 {
-    int fd, ret, tx_len;
+    int fd, ret_val, tx_len;
     char buf[MAX_BUF];
     snprintf(buf, MAX_BUF, "/sys/class/gpio/gpio%d/direction", gpio);
     fd = open(buf, O_WRONLY);
@@ -124,15 +124,15 @@ int set_gpio_direction(unsigned int gpio, const char *dir_in_or_out)
     }
 
     tx_len = 1 + strlen(dir_in_or_out);
-    ret = write(fd, dir_in_or_out, tx_len);
-    ret = tx_len == ret ? 0 : -1;
+    ret_val = write(fd, dir_in_or_out, tx_len);
+    ret_val = tx_len == ret_val ? 0 : -1;
 
     close(fd);
-    return ret;
+    return ret_val;
 }
 static int get_gpio_value(unsigned int gpio)
 {
-    int fd, ret;
+    int fd, ret_val;
     char buf[MAX_BUF];
     char ch;
 
@@ -145,22 +145,22 @@ static int get_gpio_value(unsigned int gpio)
         return fd;
     }
 
-    ret = read(fd, &ch, 1);
-    if (1 == ret)
+    ret_val = read(fd, &ch, 1);
+    if (1 == ret_val)
     {
-        ret = ch != '0' ? 1 : 0;
+        ret_val = ch != '0' ? 1 : 0;
     }
     else
     {
-        ret = -1;
+        ret_val = -1;
     }
 
     close(fd);
-    return ret;
+    return ret_val;
 }
 static int set_gpio_value(unsigned int gpio, int value)
 {
-    int fd, ret;
+    int fd, ret_val;
     char buf[MAX_BUF];
 
     snprintf(buf, MAX_BUF, "/sys/class/gpio/gpio%d/value", gpio);
@@ -172,11 +172,11 @@ static int set_gpio_value(unsigned int gpio, int value)
         return fd;
     }
 
-    ret = write(fd, value ? "1" : "0", 2);
-    ret = 2 == ret ? 0 : -1;
+    ret_val = write(fd, value ? "1" : "0", 2);
+    ret_val = 2 == ret_val ? 0 : -1;
 
     close(fd);
-    return ret;
+    return ret_val;
 }
 #endif //USE_GPIOS
 
@@ -224,14 +224,12 @@ static int mxt_wait_for_chg()
 
 static void check_pending_messages(int fd, uint8_t *rx, size_t len_rx)
 {
-    int ret, attempt;
+    int ret_val, attempt;
     struct spi_ioc_transfer tr = {
         .rx_buf = (unsigned long)rx,
         .tx_buf = (unsigned long)default_dummy_tx,
         .len = len_rx,
         .delay_usecs = delay,
-        .speed_hz = speed,
-        .bits_per_word = bits,
     };
 
 #ifdef USE_GPIOS
@@ -256,8 +254,8 @@ static void check_pending_messages(int fd, uint8_t *rx, size_t len_rx)
             }
             /* READ */
             memset(rx, 0, sizeof(rx));
-            ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
-            if (ret < 1)
+            ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+            if (ret_val < 1)
             {
                 pabort("can't recv spi message");
             }
@@ -273,7 +271,7 @@ static void check_pending_messages(int fd, uint8_t *rx, size_t len_rx)
                 break;
             }
         }
-        while (get_header_crc(rx) != rx[HEADER_LEN-1]);
+        while (get_header_crc(rx) != rx[SPI_HEADER_LEN-1]);
         if (0xff == rx[0])
         {
             // no msg
@@ -285,12 +283,10 @@ static void check_pending_messages(int fd, uint8_t *rx, size_t len_rx)
 
 static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size_t len_rx)
 {
-    int ret, attempt=0;
+    int ret_val, attempt=0;
     struct spi_ioc_transfer tr = {
         .rx_buf = (unsigned long)rx,
         .delay_usecs = delay,
-        .speed_hz = speed,
-        .bits_per_word = bits,
     };
 
     do
@@ -315,8 +311,8 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
         tr.len = len_tx;
         tr.tx_buf = (unsigned long)tx;
         memset(rx, 0, sizeof(rx));
-        ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
-        if (ret < 1)
+        ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+        if (ret_val < 1)
         {
             pabort("can't send spi message");
         }
@@ -338,8 +334,8 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
         tr.len = len_rx;
         tr.tx_buf = (unsigned long)default_dummy_tx;
         memset(rx, 0, sizeof(rx));
-        ret = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
-        if (ret < 1)
+        ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &tr);
+        if (ret_val < 1)
         {
             pabort("can't recv spi message");
         }
@@ -354,7 +350,7 @@ static void transfer(int fd, uint8_t const *tx, uint8_t *rx, size_t len_tx, size
         hex_dump(rx, len_rx, 32, "RX");
         //printf("calc_crc = %02X\n", get_header_crc(rx));
     }
-    while (get_header_crc(rx) != rx[HEADER_LEN-1]);
+    while (get_header_crc(rx) != rx[SPI_HEADER_LEN-1]);
 }
 
 static void print_usage(const char *prog)
@@ -415,31 +411,31 @@ static void parse_opts(int argc, char *argv[])
             delay = atoi(optarg);
             break;
         case 'b':
-            bits = atoi(optarg);
+            spi_bits_per_word = atoi(optarg);
             break;
         case 'l':
-            mode |= SPI_LOOP;
+            spi_mode32 |= SPI_LOOP;
             break;
         case 'H':
-            mode |= SPI_CPHA;
+            spi_mode32 |= SPI_CPHA;
             break;
         case 'O':
-            mode |= SPI_CPOL;
+            spi_mode32 |= SPI_CPOL;
             break;
         case 'L':
-            mode |= SPI_LSB_FIRST;
+            spi_mode32 |= SPI_LSB_FIRST;
             break;
         case 'C':
-            mode |= SPI_CS_HIGH;
+            spi_mode32 |= SPI_CS_HIGH;
             break;
         case '3':
-            mode |= SPI_3WIRE;
+            spi_mode32 |= SPI_3WIRE;
             break;
         case 'N':
-            mode |= SPI_NO_CS;
+            spi_mode32 |= SPI_NO_CS;
             break;
         case 'R':
-            mode |= SPI_READY;
+            spi_mode32 |= SPI_READY;
             break;
         case 'p':
             input_tx = optarg;
@@ -453,7 +449,7 @@ static void parse_opts(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-    int ret = 0;
+    int ret_val = 0;
     int fd;
 
 #ifdef USE_GPIOS
@@ -474,48 +470,48 @@ int main(int argc, char *argv[])
         pabort("can't open device");
 
     /*
-     * spi mode
+     * spi_mode32
      */
-    ret = ioctl(fd, SPI_IOC_WR_MODE32, &mode);
-    if (ret == -1)
-        pabort("can't set spi mode");
+    ret_val = ioctl(fd, SPI_IOC_WR_MODE32, &spi_mode32);
+    if (ret_val == -1)
+        pabort("can't set spi spi_mode32");
 
-    ret = ioctl(fd, SPI_IOC_RD_MODE32, &mode);
-    if (ret == -1)
-        pabort("can't get spi mode");
+    ret_val = ioctl(fd, SPI_IOC_RD_MODE32, &spi_mode32);
+    if (ret_val == -1)
+        pabort("can't get spi spi_mode32");
 
     /*
-     * bits per word
+     * spi_bits_per_word
      */
-    ret = ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &bits);
-    if (ret == -1)
+    ret_val = ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &spi_bits_per_word);
+    if (ret_val == -1)
         pabort("can't set bits per word");
 
-    ret = ioctl(fd, SPI_IOC_RD_BITS_PER_WORD, &bits);
-    if (ret == -1)
+    ret_val = ioctl(fd, SPI_IOC_RD_BITS_PER_WORD, &spi_bits_per_word);
+    if (ret_val == -1)
         pabort("can't get bits per word");
 
     /*
-     * max speed hz
+     * spi_max_speed_hz
      */
-    ret = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &speed);
-    if (ret == -1)
+    ret_val = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &spi_max_speed_hz);
+    if (ret_val == -1)
         pabort("can't set max speed hz");
 
-    ret = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &speed);
-    if (ret == -1)
+    ret_val = ioctl(fd, SPI_IOC_RD_MAX_SPEED_HZ, &spi_max_speed_hz);
+    if (ret_val == -1)
         pabort("can't get max speed hz");
 
     printf("device: %s\n", device);
-    printf("spi mode: 0x%x\n", mode);
-    printf("bits per word: %d\n", bits);
-    printf("max speed: %d Hz (%d KHz)\n", speed, speed/1000);
+    printf("spi_mode32: 0x%x\n", spi_mode32);
+    printf("spi_bits_per_word: %d\n", spi_bits_per_word);
+    printf("spi_max_speed_hz: %d (%d KHz)\n", spi_max_speed_hz, spi_max_speed_hz/1000);
 
 #ifdef USE_GPIOS
     check_pending_messages(fd, default_rx, sizeof(default_rx));
 #endif //USE_GPIOS
 
-    default_tx[HEADER_LEN-1] = get_header_crc(default_tx);
+    default_tx[SPI_HEADER_LEN-1] = get_header_crc(default_tx);
     transfer(fd, default_tx, default_rx, sizeof(default_tx), sizeof(default_rx));
 
 #ifdef USE_GPIOS
@@ -524,5 +520,5 @@ int main(int argc, char *argv[])
 
     close(fd);
 
-    return ret;
+    return ret_val;
 }
