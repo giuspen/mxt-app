@@ -145,6 +145,31 @@ int spi_dev_read_register(struct mxt_device *mxt,
                           int count,
                           size_t *bytes_read)
 {
+    int fd = -ENODEV;
+    int ret_val;
+    char tx_buf[SPI_HEADER_LEN];
+    char rx_buf[SPI_HEADER_LEN];
+
+    if (count > SPI_DEV_MAX_BLOCK)
+    {
+        count = SPI_DEV_MAX_BLOCK;
+    }
+
+    ret_val = open_device(mxt, &fd);
+    if (ret_val)
+    {
+        return ret_val;
+    }
+
+    tx_buf[0] = start_register & 0xff;
+    tx_buf[1] = (start_register >> 8) & 0xff;
+
+    
+    
+    
+    
+    
+    
     return MXT_SUCCESS;
 }
 
