@@ -69,6 +69,19 @@ struct mxt_conn_info;
 static uint32_t spi_mode32 = SPI_CPHA | SPI_CPOL;
 static uint8_t spi_bits_per_word = 8;
 static uint32_t spi_max_speed_hz = 8000000; // 8 MHz
+static uint8_t spi_tx_buf[SPI_HEADER_LEN + SPI_DEV_MAX_BLOCK];
+static uint8_t spi_rx_buf[SPI_HEADER_LEN + SPI_DEV_MAX_BLOCK];
+static struct spi_ioc_transfer spi_ioc_tr;
+static uint8_t spi_tx_dummy_buf[SPI_HEADER_LEN + SPI_DEV_MAX_BLOCK] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 static uint8_t get_crc8_iter(uint8_t crc, uint8_t data)
 {
@@ -146,9 +159,8 @@ int spi_dev_read_register(struct mxt_device *mxt,
                           size_t *bytes_read)
 {
     int fd = -ENODEV;
-    int ret_val;
-    char tx_buf[SPI_HEADER_LEN];
-    char rx_buf[SPI_HEADER_LEN];
+    int ret_val, attempt=0;
+    spi_ioc_tr.rx_buf = (unsigned long)spi_rx_buf;
 
     if (count > SPI_DEV_MAX_BLOCK)
     {
@@ -161,16 +173,55 @@ int spi_dev_read_register(struct mxt_device *mxt,
         return ret_val;
     }
 
-    tx_buf[0] = start_register & 0xff;
-    tx_buf[1] = (start_register >> 8) & 0xff;
+    do
+    {
+        attempt++;
+        if (attempt > 1)
+        {
+            if (attempt > 5)
+            {
+                mxt_verb(mxt->ctx, "Too many Retries\n");
+                return MXT_ERROR_IO;
+            }
+            mxt_verb(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
+        }
+        /* WRITE */
+        spi_tx_buf[0] = SPI_READ_REQ;
+        spi_tx_buf[1] = start_register & 0xff;
+        spi_tx_buf[2] = (start_register >> 8) & 0xff;
+        spi_tx_buf[3] = count & 0xff;
+        spi_tx_buf[4] = (count >> 8) & 0xff;
+        spi_tx_buf[5] = get_header_crc(spi_tx_buf);
+        spi_ioc_tr.tx_buf = (unsigned long)spi_tx_buf;
+        spi_ioc_tr.len = SPI_HEADER_LEN;
+        ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
+        if (ret_val < 1)
+        {
+            mxt_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
+            ret_val = mxt_errno_to_rc(errno);
+            goto close;
+        }
+        /* READ */
+        spi_ioc_tr.tx_buf = (unsigned long)spi_tx_dummy_buf;
+        spi_ioc_tr.len = SPI_HEADER_LEN + count;
+        ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
+        if (ret_val < 1)
+        {
+            mxt_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
+            ret_val = mxt_errno_to_rc(errno);
+            goto close;
+        }
+    }
+    while (get_header_crc(spi_rx_buf) != spi_rx_buf[SPI_HEADER_LEN-1]);
 
-    
-    
-    
-    
-    
-    
-    return MXT_SUCCESS;
+    memcpy(buf, spi_rx_buf + SPI_HEADER_LEN, count);
+
+    *bytes_read = count;
+    ret_val = MXT_SUCCESS;
+
+close:
+    close(fd);
+    return ret_val;
 }
 
 int spi_dev_write_register(struct mxt_device *mxt, unsigned char const *buf, int start_register, size_t count)
