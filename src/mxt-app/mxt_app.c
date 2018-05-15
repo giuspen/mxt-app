@@ -51,7 +51,8 @@
 //******************************************************************************
 /// \brief Initialize mXT device and read the info block
 /// \return #mxt_rc
-static int mxt_init_chip(struct libmaxtouch_ctx *ctx, struct mxt_device **mxt,
+static int mxt_init_chip(struct libmaxtouch_ctx *ctx,
+                         struct mxt_device **mxt,
                          struct mxt_conn_info **conn)
 {
     int ret;
@@ -835,7 +836,7 @@ int main (int argc, char *argv[])
     else if (cmd != CMD_FLASH && cmd != CMD_BOOTLOADER_VERSION)
     {
         ret = mxt_init_chip(ctx, &mxt, &conn);
-        if (ret && cmd != CMD_CRC_CHECK )
+        if (ret && cmd != CMD_CRC_CHECK)
         {
             goto free;
         }

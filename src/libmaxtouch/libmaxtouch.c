@@ -184,7 +184,8 @@ struct mxt_conn_info *mxt_unref_conn(struct mxt_conn_info *conn)
 //******************************************************************************
 /// \brief Open device
 /// \return #mxt_rc
-int mxt_new_device(struct libmaxtouch_ctx *ctx, struct mxt_conn_info *conn,
+int mxt_new_device(struct libmaxtouch_ctx *ctx,
+                   struct mxt_conn_info *conn,
                    struct mxt_device **mxt)
 {
     int ret;
@@ -215,6 +216,7 @@ int mxt_new_device(struct libmaxtouch_ctx *ctx, struct mxt_conn_info *conn,
         case E_SPI_DEV:
             // nothing to do for i2c
             // nothing to do for spi
+            ret = MXT_SUCCESS;
             break;
 
 #ifdef HAVE_LIBUSB
@@ -233,13 +235,13 @@ int mxt_new_device(struct libmaxtouch_ctx *ctx, struct mxt_conn_info *conn,
             goto failure;
     }
 
-    if (ret != 0)
+    if (MXT_SUCCESS != ret)
     {
         goto failure;
     }
 
     *mxt = new_dev;
-    return MXT_SUCCESS;
+    return ret;
 
 failure:
     mxt_unref_conn(conn);

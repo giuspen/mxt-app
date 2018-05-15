@@ -38,10 +38,10 @@ struct spi_dev_device
 {
 };
 
-int spi_dev_read_register(struct mxt_device *mxt, unsigned char *buf, int start_register, int count, size_t *bytes_read);
+int spi_dev_read_register(struct mxt_device *mxt, uint8_t *buf, uint16_t start_register, uint16_t count, size_t *bytes_read);
 
-int spi_dev_write_register(struct mxt_device *mxt, unsigned char const *buf, int start_register, size_t count);
+int spi_dev_write_register(struct mxt_device *mxt, uint8_t const *buf, uint16_t start_register, uint16_t count);
 
-int spi_dev_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int count);
+int spi_dev_bootloader_read(struct mxt_device *mxt, uint8_t *buf, uint16_t count);
 
-int spi_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf, int count, size_t *bytes_transferred);
+int spi_dev_bootloader_write(struct mxt_device *mxt, uint8_t const *buf, uint16_t count, size_t *bytes_transferred);

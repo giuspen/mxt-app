@@ -57,7 +57,8 @@ struct mxt_conn_info;
 #define SPI_INVALID_REQ  0x04
 #define SPI_INVALID_CRC  0x08
 
-#define SPI_HEADER_LEN  6
+#define SPI_HEADER_LEN      6
+#define SPI_TX_RX_BUF_SIZE  (SPI_HEADER_LEN+SPI_DEV_MAX_BLOCK)
 
 // header 6 bytes + Data[]
 // 0 opcode
@@ -68,13 +69,15 @@ struct mxt_conn_info;
 // 5 CRC
 // 6+ Data[]
 
+#define SPI_SLEEP_USEC_READ_AFTER_WRITE  270
+
 static uint32_t spi_mode32 = SPI_CPHA | SPI_CPOL;
 static uint8_t spi_bits_per_word = 8;
 static uint32_t spi_max_speed_hz = 8000000; // 8 MHz
-static uint8_t spi_tx_buf[SPI_HEADER_LEN + SPI_DEV_MAX_BLOCK];
-static uint8_t spi_rx_buf[SPI_HEADER_LEN + SPI_DEV_MAX_BLOCK];
+static uint8_t spi_tx_buf[SPI_TX_RX_BUF_SIZE];
+static uint8_t spi_rx_buf[SPI_TX_RX_BUF_SIZE];
 static struct spi_ioc_transfer spi_ioc_tr;
-static uint8_t spi_tx_dummy_buf[SPI_HEADER_LEN + SPI_DEV_MAX_BLOCK] = {
+static uint8_t spi_tx_dummy_buf[SPI_TX_RX_BUF_SIZE] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -84,6 +87,33 @@ static uint8_t spi_tx_dummy_buf[SPI_HEADER_LEN + SPI_DEV_MAX_BLOCK] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+static void hex_dump(const void *src, size_t length, size_t line_size, char *prefix)
+{
+    int i = 0;
+    const unsigned char *address = src;
+    const unsigned char *line = address;
+    unsigned char c;
+
+    printf("%s | ", prefix);
+    while (length-- > 0) {
+        printf("%02X ", *address++);
+        if (!(++i % line_size) || (length == 0 && i % line_size)) {
+            if (length == 0) {
+                while (i++ % line_size)
+                    printf("__ ");
+            }
+            printf(" | ");  /* right close */
+            while (line < address) {
+                c = *line++;
+                printf("%c", (c < 33 || c == 255) ? 0x2E : c);
+            }
+            printf("\n");
+            if (length > 0)
+                printf("%s | ", prefix);
+        }
+    }
+}
 
 static uint8_t get_crc8_iter(uint8_t crc, uint8_t data)
 {
@@ -156,21 +186,21 @@ static int spi_open_device(struct mxt_device *mxt, int *fd_out)
 
 static void spi_prepare_header(uint8_t *header,
                                uint8_t opcode,
-                               int start_register,
-                               int count)
+                               uint16_t start_register,
+                               uint16_t count)
 {
     header[0] = opcode;
     header[1] = start_register & 0xff;
-    header[2] = (start_register >> 8) & 0xff;
+    header[2] = start_register >> 8;
     header[3] = count & 0xff;
-    header[4] = (count >> 8) & 0xff;
-    header[5] = get_header_crc(spi_tx_buf);
+    header[4] = count >> 8;
+    header[5] = get_header_crc(header);
 }
 
 int spi_dev_read_register(struct mxt_device *mxt,
-                          unsigned char *buf,
-                          int start_register,
-                          int count,
+                          uint8_t *buf,
+                          uint16_t start_register,
+                          uint16_t count,
                           size_t *bytes_read)
 {
     int fd = -ENODEV;
@@ -195,10 +225,10 @@ int spi_dev_read_register(struct mxt_device *mxt,
         {
             if (attempt > 5)
             {
-                mxt_log_verb(mxt->ctx, "Too many Retries\n");
+                mxt_log_err(mxt->ctx, "Too many Retries\n");
                 return MXT_ERROR_IO;
             }
-            mxt_log_verb(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
+            mxt_log_warn(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
         }
         /* WRITE SPI_READ_REQ */
         spi_prepare_header(spi_tx_buf, SPI_READ_REQ, start_register, count);
@@ -211,6 +241,9 @@ int spi_dev_read_register(struct mxt_device *mxt,
             ret_val = mxt_errno_to_rc(errno);
             goto close;
         }
+        usleep(SPI_SLEEP_USEC_READ_AFTER_WRITE); //TODO use CHG instead
+        //hex_dump(spi_tx_buf, spi_ioc_tr.len, 32, "TX");
+        //hex_dump(spi_rx_buf, spi_ioc_tr.len, 32, "RX");
         /* READ SPI_READ_OK */
         spi_ioc_tr.tx_buf = (unsigned long)spi_tx_dummy_buf;
         spi_ioc_tr.len = SPI_HEADER_LEN + count;
@@ -221,6 +254,8 @@ int spi_dev_read_register(struct mxt_device *mxt,
             ret_val = mxt_errno_to_rc(errno);
             goto close;
         }
+        //hex_dump(spi_tx_dummy_buf, spi_ioc_tr.len, 32, "TX");
+        //hex_dump(spi_rx_buf, spi_ioc_tr.len, 32, "RX");
         if (SPI_READ_OK != spi_rx_buf[0])
         {
             mxt_log_err(mxt->ctx, "SPI_READ_OK != %.2X reading from spi", spi_rx_buf[0]);
@@ -229,14 +264,14 @@ int spi_dev_read_register(struct mxt_device *mxt,
         }
         if (spi_tx_buf[1] != spi_rx_buf[1] || spi_tx_buf[2] != spi_rx_buf[2])
         {
-            mxt_log_err(mxt->ctx, "Unexpected address %d != %d reading from spi", spi_rx_buf[1] & (spi_rx_buf[2] << 8), start_register);
+            mxt_log_err(mxt->ctx, "Unexpected address %d != %d reading from spi", spi_rx_buf[1] | (spi_rx_buf[2] << 8), start_register);
             ret_val = MXT_ERROR_PROTOCOL_FAULT;
             goto close;
         }
     }
     while (get_header_crc(spi_rx_buf) != spi_rx_buf[SPI_HEADER_LEN-1]);
 
-    count = spi_rx_buf[3] & (spi_rx_buf[4] << 8);
+    count = spi_rx_buf[3] | (spi_rx_buf[4] << 8);
     memcpy(buf, spi_rx_buf + SPI_HEADER_LEN, count);
     *bytes_read = count;
 
@@ -248,9 +283,9 @@ close:
 }
 
 int spi_dev_write_register(struct mxt_device *mxt,
-                           unsigned char const *buf,
-                           int start_register,
-                           size_t count)
+                           uint8_t const *buf,
+                           uint16_t start_register,
+                           uint16_t count)
 {
     int fd = -ENODEV;
     int ret_val, attempt=0;
@@ -276,10 +311,10 @@ int spi_dev_write_register(struct mxt_device *mxt,
         {
             if (attempt > 5)
             {
-                mxt_log_verb(mxt->ctx, "Too many Retries\n");
+                mxt_log_err(mxt->ctx, "Too many Retries\n");
                 return MXT_ERROR_IO;
             }
-            mxt_log_verb(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
+            mxt_log_warn(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
         }
         /* WRITE SPI_WRITE_REQ */
         spi_prepare_header(spi_tx_buf, SPI_WRITE_REQ, start_register, count);
@@ -293,6 +328,7 @@ int spi_dev_write_register(struct mxt_device *mxt,
             ret_val = mxt_errno_to_rc(errno);
             goto close;
         }
+        usleep(SPI_SLEEP_USEC_READ_AFTER_WRITE); //TODO use CHG instead
         /* READ SPI_WRITE_OK */
         spi_ioc_tr.tx_buf = (unsigned long)spi_tx_dummy_buf;
         spi_ioc_tr.len = SPI_HEADER_LEN;
@@ -311,13 +347,13 @@ int spi_dev_write_register(struct mxt_device *mxt,
         }
         if (spi_tx_buf[1] != spi_rx_buf[1] || spi_tx_buf[2] != spi_rx_buf[2])
         {
-            mxt_log_err(mxt->ctx, "Unexpected address %d != %d reading from spi", spi_rx_buf[1] & (spi_rx_buf[2] << 8), start_register);
+            mxt_log_err(mxt->ctx, "Unexpected address %d != %d reading from spi", spi_rx_buf[1] | (spi_rx_buf[2] << 8), start_register);
             ret_val = MXT_ERROR_PROTOCOL_FAULT;
             goto close;
         }
         if (spi_tx_buf[3] != spi_rx_buf[3] || spi_tx_buf[4] != spi_rx_buf[4])
         {
-            mxt_log_err(mxt->ctx, "Unexpected count %d != %d reading from spi", spi_rx_buf[3] & (spi_rx_buf[4] << 8), count);
+            mxt_log_err(mxt->ctx, "Unexpected count %d != %d reading from spi", spi_rx_buf[3] | (spi_rx_buf[4] << 8), count);
             ret_val = MXT_ERROR_PROTOCOL_FAULT;
             goto close;
         }
@@ -331,12 +367,12 @@ close:
     return ret_val;
 }
 
-int spi_dev_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int count)
+int spi_dev_bootloader_read(struct mxt_device *mxt, uint8_t *buf, uint16_t count)
 {
     return MXT_SUCCESS;
 }
 
-int spi_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf, int count, size_t *bytes_transferred)
+int spi_dev_bootloader_write(struct mxt_device *mxt, uint8_t const *buf, uint16_t count, size_t *bytes_transferred)
 {
     return MXT_SUCCESS;
 }
