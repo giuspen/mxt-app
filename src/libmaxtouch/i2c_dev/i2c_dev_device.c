@@ -4,6 +4,7 @@
 /// \author Nick Dyer
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -60,14 +61,14 @@ static int open_and_set_slave_address(struct mxt_device *mxt, int *fd_out)
     fd = open(filename, O_RDWR);
     if (fd < 0)
     {
-        mxt_err(mxt->ctx, "Could not open %s, error %s (%d)", filename, strerror(errno), errno);
+        mxt_log_err(mxt->ctx, "Could not open %s, error %s (%d)", filename, strerror(errno), errno);
         return mxt_errno_to_rc(errno);
     }
 
     ret_val = ioctl(fd, I2C_SLAVE_FORCE, mxt->conn->i2c_dev.address);
     if (ret_val < 0)
     {
-        mxt_err(mxt->ctx, "Error setting slave address, error %s (%d)", strerror(errno), errno);
+        mxt_log_err(mxt->ctx, "Error setting slave address, error %s (%d)", strerror(errno), errno);
         close(fd);
         return mxt_errno_to_rc(errno);
     }
@@ -105,11 +106,11 @@ int i2c_dev_read_register(struct mxt_device *mxt,
 
     if (write(fd, &register_buf, 2) != 2)
     {
-        mxt_verb(mxt->ctx, "I2C retry");
+        mxt_log_verb(mxt->ctx, "I2C retry");
         usleep(I2C_RETRY_DELAY);
         if (write(fd, &register_buf, 2) != 2)
         {
-            mxt_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
+            mxt_log_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
             ret_val = mxt_errno_to_rc(errno);
             goto close;
         }
@@ -119,7 +120,7 @@ int i2c_dev_read_register(struct mxt_device *mxt,
     read_rc = read(fd, buf, count);
     if (read_rc < 0)
     {
-        mxt_err(mxt->ctx, "Error %s (%d) reading from i2c", strerror(errno), errno);
+        mxt_log_err(mxt->ctx, "Error %s (%d) reading from i2c", strerror(errno), errno);
         ret_val = mxt_errno_to_rc(errno);
         goto close;
     }
@@ -166,11 +167,11 @@ int i2c_dev_write_register(struct mxt_device *mxt, unsigned char const *val,
 
     if (write(fd, buf, count) != count)
     {
-        mxt_verb(mxt->ctx, "I2C retry");
+        mxt_log_verb(mxt->ctx, "I2C retry");
         usleep(I2C_RETRY_DELAY);
         if (write(fd, buf, count) != count)
         {
-            mxt_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
+            mxt_log_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
             ret_val = mxt_errno_to_rc(errno);
         }
         else
@@ -202,11 +203,11 @@ int i2c_dev_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int coun
         return ret_val;
     }
 
-    mxt_dbg(mxt->ctx, "Reading %d bytes", count);
+    mxt_log_dbg(mxt->ctx, "Reading %d bytes", count);
 
     if (read(fd, buf, count) != count)
     {
-        mxt_err(mxt->ctx, "Error %s (%d) reading from i2c", strerror(errno), errno);
+        mxt_log_err(mxt->ctx, "Error %s (%d) reading from i2c", strerror(errno), errno);
         ret_val = mxt_errno_to_rc(errno);
     }
     else
@@ -238,11 +239,11 @@ int i2c_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf,
         return ret_val;
     }
 
-    mxt_dbg(mxt->ctx, "Writing %d bytes", count);
+    mxt_log_dbg(mxt->ctx, "Writing %d bytes", count);
 
     if (write(fd, buf, count) != count)
     {
-        mxt_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
+        mxt_log_err(mxt->ctx, "Error %s (%d) writing to i2c", strerror(errno), errno);
         ret_val = mxt_errno_to_rc(errno);
     }
     else

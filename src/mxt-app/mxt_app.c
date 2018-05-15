@@ -4,6 +4,7 @@
 /// \author Nick Dyer
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -60,12 +61,12 @@ static int mxt_init_chip(struct libmaxtouch_ctx *ctx, struct mxt_device **mxt,
         ret = mxt_scan(ctx, conn, false);
         if (ret == MXT_ERROR_NO_DEVICE)
         {
-            mxt_err(ctx, "Unable to find a device");
+            mxt_log_err(ctx, "Unable to find a device");
             return ret;
         }
         else if (ret)
         {
-            mxt_err(ctx, "Failed to find device");
+            mxt_log_err(ctx, "Failed to find device");
             return ret;
         }
     }
@@ -80,7 +81,7 @@ static int mxt_init_chip(struct libmaxtouch_ctx *ctx, struct mxt_device **mxt,
     if ((*mxt)->conn->type == E_USB && usb_is_bootloader(*mxt))
     {
         mxt_free_device(*mxt);
-        mxt_err(ctx, "USB device in bootloader mode");
+        mxt_log_err(ctx, "USB device in bootloader mode");
         return MXT_ERROR_UNEXPECTED_DEVICE_STATE;
     }
 #endif
@@ -172,7 +173,7 @@ static void print_usage(char *prog_name)
             "    -d hidraw:PATH             : HIDRAW device, eg \"hidraw:/dev/hidraw0\"\n"
             "\n"
             "Debug options:\n"
-            "  -v [--verbose] LEVEL       : set debug level\n",
+            "  -v [--verbose] 0-4           : set debug level\n",
             MXT_VERSION, prog_name, I2C_DEV_MAX_BLOCK);
 }
 
@@ -799,38 +800,37 @@ int main (int argc, char *argv[])
     ret = mxt_new(&ctx);
     if (ret)
     {
-        mxt_err(ctx, "Failed to init libmaxtouch");
+        mxt_log_err(ctx, "Failed to init libmaxtouch");
         return ret;
     }
 
     /* Set debug level */
     mxt_set_log_level(ctx, verbose);
-    mxt_verb(ctx, "verbose:%u", verbose);
+    mxt_log_verb(ctx, "verbose:%u", verbose);
 
     /* Debug does not work until mxt_set_verbose() is called */
-    mxt_info(ctx, "Version:%s", MXT_VERSION);
+    mxt_log_info(ctx, "Version:%s", MXT_VERSION);
 
     /* Update the i2c block size */
     if (i2c_block_size != I2C_DEV_MAX_BLOCK)
     {
-        mxt_verb(ctx, "Setting i2c_block_size from %d to %d", ctx->i2c_block_size, i2c_block_size);
+        mxt_log_verb(ctx, "Setting i2c_block_size from %d to %d", ctx->i2c_block_size, i2c_block_size);
         ctx->i2c_block_size = i2c_block_size;
     }
 
     if (cmd == CMD_WRITE || cmd == CMD_READ)
     {
-        mxt_verb(ctx, "instance:%u", instance);
-        mxt_verb(ctx, "count:%u", count);
-        mxt_verb(ctx, "address:%u", address);
-        mxt_verb(ctx, "object_type:%u", object_type);
-        mxt_verb(ctx, "format:%s", format ? "true" : "false");
+        mxt_log_verb(ctx, "instance:%u", instance);
+        mxt_log_verb(ctx, "count:%u", count);
+        mxt_log_verb(ctx, "address:%u", address);
+        mxt_log_verb(ctx, "object_type:%u", object_type);
+        mxt_log_verb(ctx, "format:%s", format ? "true" : "false");
     }
 
     if (cmd == CMD_QUERY)
     {
         ret = mxt_scan(ctx, &conn, true);
         goto free;
-
     }
     else if (cmd != CMD_FLASH && cmd != CMD_BOOTLOADER_VERSION)
     {
@@ -849,7 +849,7 @@ int main (int argc, char *argv[])
     switch (cmd)
     {
         case CMD_WRITE:
-            mxt_verb(ctx, "Write command");
+            mxt_log_verb(ctx, "Write command");
             ret = mxt_handle_write_cmd(mxt, object_type, count, instance, address,
                                        argc, argv);
             if (ret == MXT_ERROR_BAD_INPUT)
@@ -859,60 +859,60 @@ int main (int argc, char *argv[])
             break;
 
         case CMD_READ:
-            mxt_verb(ctx, "Read command");
+            mxt_log_verb(ctx, "Read command");
             ret = mxt_read_object(mxt, object_type, instance, address, count, format);
             break;
 
         case CMD_INFO:
-            mxt_verb(ctx, "CMD_INFO");
+            mxt_log_verb(ctx, "CMD_INFO");
             mxt_print_info_block(mxt);
             ret = MXT_SUCCESS;
             break;
 
         case CMD_GOLDEN_REFERENCES:
-            mxt_verb(ctx, "CMD_GOLDEN_REFERENCES");
+            mxt_log_verb(ctx, "CMD_GOLDEN_REFERENCES");
             ret = mxt_store_golden_refs(mxt);
             break;
 
         case CMD_BRIDGE_SERVER:
-            mxt_verb(ctx, "CMD_BRIDGE_SERVER");
-            mxt_verb(ctx, "port:%u", port);
+            mxt_log_verb(ctx, "CMD_BRIDGE_SERVER");
+            mxt_log_verb(ctx, "port:%u", port);
             ret = mxt_socket_server(mxt, port);
             break;
 
         case CMD_BRIDGE_CLIENT:
-            mxt_verb(ctx, "CMD_BRIDGE_CLIENT");
+            mxt_log_verb(ctx, "CMD_BRIDGE_CLIENT");
             ret = mxt_socket_client(mxt, strbuf, port);
             break;
 
         case CMD_SERIAL_DATA:
-            mxt_verb(ctx, "CMD_SERIAL_DATA");
-            mxt_verb(ctx, "t68_datatype:%u", t68_datatype);
+            mxt_log_verb(ctx, "CMD_SERIAL_DATA");
+            mxt_log_verb(ctx, "t68_datatype:%u", t68_datatype);
             ret = mxt_serial_data_upload(mxt, strbuf, t68_datatype);
             break;
 
         case CMD_TEST:
-            mxt_verb(ctx, "CMD_TEST");
+            mxt_log_verb(ctx, "CMD_TEST");
             ret = run_self_tests(mxt, self_test_cmd);
             break;
 
         case CMD_FLASH:
-            mxt_verb(ctx, "CMD_FLASH");
+            mxt_log_verb(ctx, "CMD_FLASH");
             ret = mxt_flash_firmware(ctx, mxt, strbuf, strbuf2, conn);
             break;
 
         case CMD_RESET:
-            mxt_verb(ctx, "CMD_RESET");
+            mxt_log_verb(ctx, "CMD_RESET");
             ret = mxt_reset_chip(mxt, false);
             break;
 
         case CMD_RESET_BOOTLOADER:
-            mxt_verb(ctx, "CMD_RESET_BOOTLOADER");
+            mxt_log_verb(ctx, "CMD_RESET_BOOTLOADER");
             ret = mxt_reset_chip(mxt, true);
             break;
 
         case CMD_BOOTLOADER_VERSION:
-            mxt_verb(ctx, "CMD_RESET_BOOTLOADER");
+            mxt_log_verb(ctx, "CMD_RESET_BOOTLOADER");
             ret = mxt_bootloader_version(ctx, mxt, conn);
             break;
 
@@ -921,86 +921,86 @@ int main (int argc, char *argv[])
             break;
 
         case CMD_BACKUP:
-            mxt_verb(ctx, "CMD_BACKUP");
+            mxt_log_verb(ctx, "CMD_BACKUP");
             ret = mxt_backup_config(mxt, backup_cmd);
             break;
 
         case CMD_CALIBRATE:
-            mxt_verb(ctx, "CMD_CALIBRATE");
+            mxt_log_verb(ctx, "CMD_CALIBRATE");
             ret = mxt_calibrate_chip(mxt);
             break;
 
         case CMD_DEBUG_DUMP:
-            mxt_verb(ctx, "CMD_DEBUG_DUMP");
-            mxt_verb(ctx, "mode:%u", t37_mode);
-            mxt_verb(ctx, "frames:%u", t37_frames);
+            mxt_log_verb(ctx, "CMD_DEBUG_DUMP");
+            mxt_log_verb(ctx, "mode:%u", t37_mode);
+            mxt_log_verb(ctx, "frames:%u", t37_frames);
             ret = mxt_debug_dump(mxt, t37_mode, strbuf, t37_frames);
             break;
 
         case CMD_ZERO_CFG:
-            mxt_verb(ctx, "CMD_ZERO_CFG");
+            mxt_log_verb(ctx, "CMD_ZERO_CFG");
             ret = mxt_zero_config(mxt);
             if (ret)
             {
-                mxt_err(ctx, "Error zeroing all configuration settings");
+                mxt_log_err(ctx, "Error zeroing all configuration settings");
             }
             break;
 
         case CMD_LOAD_CFG:
-            mxt_verb(ctx, "CMD_LOAD_CFG");
-            mxt_verb(ctx, "filename:%s", strbuf);
+            mxt_log_verb(ctx, "CMD_LOAD_CFG");
+            mxt_log_verb(ctx, "filename:%s", strbuf);
             ret = mxt_load_config_file(mxt, strbuf);
             if (ret)
             {
-                mxt_err(ctx, "Error loading the configuration");
+                mxt_log_err(ctx, "Error loading the configuration");
             }
             else
             {
-                mxt_info(ctx, "Configuration loaded");
+                mxt_log_info(ctx, "Configuration loaded");
 
                 ret = mxt_backup_config(mxt, backup_cmd);
                 if (ret)
                 {
-                    mxt_err(ctx, "Error backing up");
+                    mxt_log_err(ctx, "Error backing up");
                 }
                 else
                 {
-                    mxt_info(ctx, "Configuration backed up");
+                    mxt_log_info(ctx, "Configuration backed up");
 
                     ret = mxt_reset_chip(mxt, false);
                     if (ret)
                     {
-                        mxt_err(ctx, "Error resetting");
+                        mxt_log_err(ctx, "Error resetting");
                     }
                     else
                     {
-                        mxt_info(ctx, "Chip reset");
+                        mxt_log_info(ctx, "Chip reset");
                     }
                 }
             }
             break;
 
         case CMD_SAVE_CFG:
-            mxt_verb(ctx, "CMD_SAVE_CFG");
-            mxt_verb(ctx, "filename:%s", strbuf);
+            mxt_log_verb(ctx, "CMD_SAVE_CFG");
+            mxt_log_verb(ctx, "filename:%s", strbuf);
             ret = mxt_save_config_file(mxt, strbuf);
             break;
 
         case CMD_SELF_CAP_TUNE_CONFIG:
         case CMD_SELF_CAP_TUNE_NVRAM:
-            mxt_verb(ctx, "CMD_SELF_CAP_TUNE");
+            mxt_log_verb(ctx, "CMD_SELF_CAP_TUNE");
             ret = mxt_self_cap_tune(mxt, cmd);
             break;
 
         case CMD_CRC_CHECK:
-            mxt_verb(ctx, "CMD_CRC_CHECK");
-            mxt_verb(ctx, "filename:%s", strbuf);
+            mxt_log_verb(ctx, "CMD_CRC_CHECK");
+            mxt_log_verb(ctx, "filename:%s", strbuf);
             ret = mxt_checkcrc(ctx, mxt, strbuf);
             break;
 
         case CMD_NONE:
         default:
-            mxt_verb(ctx, "cmd: %d", cmd);
+            mxt_log_verb(ctx, "cmd: %d", cmd);
             mxt_set_log_fn(ctx, mxt_log_stdout);
 
             if (verbose <= 2)
@@ -1014,8 +1014,8 @@ int main (int argc, char *argv[])
 
     if (cmd == CMD_MESSAGES || (msgs_enabled && ret == MXT_SUCCESS))
     {
-        mxt_verb(ctx, "CMD_MESSAGES");
-        mxt_verb(ctx, "msgs_timeout:%d", msgs_timeout);
+        mxt_log_verb(ctx, "CMD_MESSAGES");
+        mxt_log_verb(ctx, "msgs_timeout:%d", msgs_timeout);
         // Support message filtering with -T
         if (cmd == CMD_MESSAGES && !msg_filter_type)
         {

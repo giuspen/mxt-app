@@ -4,6 +4,7 @@
 /// \author Tim Culmer
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -119,7 +120,7 @@ void mxt_log_buffer(struct libmaxtouch_ctx *ctx, enum mxt_log_level level,
     hexbuf = (char *)calloc(strsize, sizeof(char));
     if (hexbuf == NULL)
     {
-        mxt_err(ctx, "%s: calloc failure", __func__);
+        mxt_log_err(ctx, "%s: calloc failure", __func__);
         return;
     }
 

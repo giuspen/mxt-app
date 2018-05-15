@@ -3,6 +3,7 @@
 /// \brief  Functions to read kernel message buffer
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -141,7 +142,7 @@ int dmesg_get_msgs(struct mxt_device *mxt, int *count, bool init_timestamp)
     // Return if no bytes read
     if (ep < 0)
     {
-        mxt_warn(mxt->ctx, "klogctl error %d (%s)", errno, strerror(errno));
+        mxt_log_warn(mxt->ctx, "klogctl error %d (%s)", errno, strerror(errno));
         ret = mxt_errno_to_rc(errno);
     }
     else
@@ -177,7 +178,7 @@ int dmesg_get_msgs(struct mxt_device *mxt, int *count, bool init_timestamp)
                 {
                     mxt->sysfs.timestamp = sec;
                     mxt->sysfs.mtimestamp = msec;
-                    mxt_verb(mxt->ctx, "%s - init [%5lu.%06lu]", __func__, sec, msec);
+                    mxt_log_verb(mxt->ctx, "%s - init [%5lu.%06lu]", __func__, sec, msec);
                     break;
                 }
 
@@ -322,7 +323,7 @@ int dmesg_alloc_buffer(struct mxt_device *mxt)
     size = klogctl(SYSLOG_ACTION_SIZE_BUFFER, NULL, 0);
     if (size == -1)
     {
-        mxt_err(mxt->ctx, "klogctl error %d (%s)", errno, strerror(errno));
+        mxt_log_err(mxt->ctx, "klogctl error %d (%s)", errno, strerror(errno));
         return mxt_errno_to_rc(errno);
     }
 
@@ -331,13 +332,13 @@ int dmesg_alloc_buffer(struct mxt_device *mxt)
         size = MAX_DMESG_BUFSIZE;
     }
 
-    mxt_dbg(mxt->ctx, "sysfs.debug_msg_buf_size: %d bytes", size);
+    mxt_log_dbg(mxt->ctx, "sysfs.debug_msg_buf_size: %d bytes", size);
 
     // Allocate buffer space
     mxt->sysfs.debug_msg_buf = (char *)calloc(size, sizeof(char));
     if (mxt->sysfs.debug_msg_buf == NULL)
     {
-        mxt_err(mxt->ctx, "Error allocating debug_msg_buf %d bytes", size);
+        mxt_log_err(mxt->ctx, "Error allocating debug_msg_buf %d bytes", size);
         return mxt_errno_to_rc(errno);
     }
 

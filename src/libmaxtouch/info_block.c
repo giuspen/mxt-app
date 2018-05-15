@@ -4,6 +4,7 @@
 /// \author Iiro Valkonen
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -73,7 +74,7 @@ int mxt_calculate_crc(struct libmaxtouch_ctx *ctx, uint32_t *crc_result,
     uint32_t calc_crc = 0; /* Calculated checksum */
     uint16_t crc_byte_index = 0;
 
-    mxt_dbg(ctx, "Calculating CRC over %zd bytes", size);
+    mxt_log_dbg(ctx, "Calculating CRC over %zd bytes", size);
 
     /* Call the CRC function crc24() iteratively to calculate the CRC,
      * passing it two bytes at a time.  */
@@ -111,14 +112,14 @@ int mxt_read_info_block(struct mxt_device *mxt)
     uint8_t *info_blk = (uint8_t *)calloc(1, sizeof(struct mxt_id_info));
     if (info_blk == NULL)
     {
-        mxt_err(mxt->ctx, "Memory allocation failure");
+        mxt_log_err(mxt->ctx, "Memory allocation failure");
         return MXT_ERROR_NO_MEM;
     }
 
     ret = mxt_read_register(mxt, info_blk, 0, sizeof(struct mxt_id_info));
     if (ret)
     {
-        mxt_err(mxt->ctx, "Failed to read ID information");
+        mxt_log_err(mxt->ctx, "Failed to read ID information");
         return ret;
     }
 
@@ -134,7 +135,7 @@ int mxt_read_info_block(struct mxt_device *mxt)
     info_blk = (uint8_t *)realloc(info_blk, info_block_size);
     if (info_blk == NULL)
     {
-        mxt_err(mxt->ctx, "Memory allocation failure");
+        mxt_log_err(mxt->ctx, "Memory allocation failure");
         return MXT_ERROR_NO_MEM;
     }
 
@@ -142,7 +143,7 @@ int mxt_read_info_block(struct mxt_device *mxt)
     ret = mxt_read_register(mxt, info_blk, 0, info_block_size);
     if (ret)
     {
-        mxt_err(mxt->ctx, "Failed to read Information Block");
+        mxt_log_err(mxt->ctx, "Failed to read Information Block");
         return ret;
     }
 
@@ -164,19 +165,19 @@ int mxt_read_info_block(struct mxt_device *mxt)
     /* A zero CRC indicates a communications error */
     if (calc_crc == 0)
     {
-        mxt_err(mxt->ctx, "Info checksum zero - possible comms error or zero input");
+        mxt_log_err(mxt->ctx, "Info checksum zero - possible comms error or zero input");
         return MXT_ERROR_IO;
     }
 
     /* Compare the read checksum with calculated checksum */
     if (mxt->info.crc != calc_crc)
     {
-        mxt_err(mxt->ctx, "Info checksum error calc=%06X read=%06X",
+        mxt_log_err(mxt->ctx, "Info checksum error calc=%06X read=%06X",
                 calc_crc, mxt->info.crc);
         return MXT_ERROR_CHECKSUM_MISMATCH;
     }
 
-    mxt_dbg(mxt->ctx, "Info checksum verified %06X", calc_crc);
+    mxt_log_dbg(mxt->ctx, "Info checksum verified %06X", calc_crc);
     return MXT_SUCCESS;
 }
 
@@ -208,7 +209,7 @@ int mxt_calc_report_ids(struct mxt_device *mxt)
                                 sizeof(struct mxt_report_id_map));
     if (mxt->report_id_map == NULL)
     {
-        mxt_err(mxt->ctx, "calloc failure");
+        mxt_log_err(mxt->ctx, "calloc failure");
         return MXT_ERROR_NO_MEM;
     }
 
@@ -228,7 +229,7 @@ int mxt_calc_report_ids(struct mxt_device *mxt)
         }
     }
 
-    mxt_verb(mxt->ctx, "Created a look-up table of %d Report IDs", report_id_count);
+    mxt_log_verb(mxt->ctx, "Created a look-up table of %d Report IDs", report_id_count);
 
     return MXT_SUCCESS;
 }
@@ -265,14 +266,14 @@ void mxt_display_chip_info(struct mxt_device *mxt)
     mxt_get_firmware_version(mxt, (char *)&firmware_version);
 
     /* Display ID information */
-    mxt_dbg(mxt->ctx, "Family ID = %u (0x%02X)",
+    mxt_log_dbg(mxt->ctx, "Family ID = %u (0x%02X)",
             id->family, id->family);
-    mxt_dbg(mxt->ctx, "Variant ID = %u (0x%02X)",
+    mxt_log_dbg(mxt->ctx, "Variant ID = %u (0x%02X)",
             id->variant, id->variant);
-    mxt_dbg(mxt->ctx, "Firmware Version = %s", firmware_version);
-    mxt_dbg(mxt->ctx, "Matrix X Size = %d", id->matrix_x_size);
-    mxt_dbg(mxt->ctx, "Matrix Y Size = %d", id->matrix_y_size);
-    mxt_dbg(mxt->ctx, "Number of elements in the Object Table = %d",
+    mxt_log_dbg(mxt->ctx, "Firmware Version = %s", firmware_version);
+    mxt_log_dbg(mxt->ctx, "Matrix X Size = %d", id->matrix_x_size);
+    mxt_log_dbg(mxt->ctx, "Matrix Y Size = %d", id->matrix_y_size);
+    mxt_log_dbg(mxt->ctx, "Number of elements in the Object Table = %d",
             id->num_objects);
 
     /* Display information about specific objects */
@@ -280,7 +281,7 @@ void mxt_display_chip_info(struct mxt_device *mxt)
     {
         obj = mxt->info.objects[i];
 
-        mxt_dbg(mxt->ctx, "T%u size:%u instances:%u address:%u",
+        mxt_log_dbg(mxt->ctx, "T%u size:%u instances:%u address:%u",
                 obj.type, MXT_SIZE(obj),
                 MXT_INSTANCES(obj), mxt_get_start_position(obj, 0));
     }
@@ -315,14 +316,14 @@ uint16_t mxt_get_object_address(struct mxt_device *mxt, uint16_t object_type, ui
             }
             else
             {
-                mxt_warn(mxt->ctx, "T%u instance %u not present on device",
+                mxt_log_warn(mxt->ctx, "T%u instance %u not present on device",
                          object_type, instance);
                 return OBJECT_NOT_FOUND;
             }
         }
     }
 
-    mxt_verb(mxt->ctx, "T%u not present on device", object_type);
+    mxt_log_verb(mxt->ctx, "T%u not present on device", object_type);
     return OBJECT_NOT_FOUND;
 }
 
@@ -387,7 +388,7 @@ uint8_t mxt_get_object_table_num(struct mxt_device *mxt, uint16_t object_type)
         }
     }
 
-    mxt_warn(mxt->ctx, "Could not find object type T%u in object table", object_type);
+    mxt_log_warn(mxt->ctx, "Could not find object type T%u in object table", object_type);
     return 255;
 }
 

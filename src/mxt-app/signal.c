@@ -67,7 +67,7 @@ static void mxt_init_sigint_handler(struct mxt_device *mxt, struct sigaction *sa
     sa->sa_flags = SA_RESTART;
     if (sigaction(SIGINT, sa, NULL) == -1)
     {
-        mxt_err(mxt->ctx, "Can't catch SIGINT");
+        mxt_log_err(mxt->ctx, "Can't catch SIGINT");
     }
 }
 
@@ -78,7 +78,7 @@ static void mxt_release_sigint_handler(struct mxt_device *mxt, struct sigaction 
     sa->sa_handler = SIG_DFL;
     if (sigaction(SIGINT, sa, NULL) == -1)
     {
-        mxt_err(mxt->ctx, "Can't return SIGINT to default handler");
+        mxt_log_err(mxt->ctx, "Can't return SIGINT to default handler");
     }
 
     mxt_sigint_rx = 0;

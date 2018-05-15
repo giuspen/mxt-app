@@ -4,6 +4,7 @@
 /// \author Iiro Valkonen.
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -147,7 +148,7 @@ int mxt_read_object(struct mxt_device *mxt, uint16_t object_type,
             return MXT_ERROR_OBJECT_NOT_FOUND;
         }
 
-        mxt_dbg(mxt->ctx, "T%u address:%u offset:%u", object_type,
+        mxt_log_dbg(mxt->ctx, "T%u address:%u offset:%u", object_type,
                 object_address, address);
         address = object_address + address;
 
@@ -158,14 +159,14 @@ int mxt_read_object(struct mxt_device *mxt, uint16_t object_type,
     }
     else if (count == 0)
     {
-        mxt_err(mxt->ctx, "No length information");
+        mxt_log_err(mxt->ctx, "No length information");
         return MXT_ERROR_BAD_INPUT;
     }
 
     databuf = (uint8_t *)calloc(count, sizeof(uint8_t));
     if (databuf == NULL)
     {
-        mxt_err(mxt->ctx, "Memory allocation failure");
+        mxt_log_err(mxt->ctx, "Memory allocation failure");
         return MXT_ERROR_NO_MEM;
     }
 
@@ -239,7 +240,7 @@ int mxt_handle_write_cmd(struct mxt_device *mxt, const uint16_t type,
             return MXT_ERROR_OBJECT_NOT_FOUND;
         }
 
-        mxt_verb(mxt->ctx, "T%u address:%u offset:%u", type, obj_addr, address);
+        mxt_log_verb(mxt->ctx, "T%u address:%u offset:%u", type, obj_addr, address);
         address = obj_addr + address;
 
         if (count == 0)

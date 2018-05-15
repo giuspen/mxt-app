@@ -5,6 +5,7 @@
 /// \author Tim Culmer
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -77,22 +78,22 @@ void mxt_log(struct libmaxtouch_ctx *ctx, enum mxt_log_level level, const char *
 #if ENABLE_LOGGING
 
 #if ENABLE_DEBUG
-#define mxt_verb(ctx, arg...) mxt_log_cond(ctx, LOG_VERBOSE, ## arg)
-#define mxt_dbg(ctx, arg...) mxt_log_cond(ctx, LOG_DEBUG, ## arg)
+#define mxt_log_verb(ctx, arg...) mxt_log_cond(ctx, LOG_VERBOSE, ## arg)
+#define mxt_log_dbg(ctx, arg...) mxt_log_cond(ctx, LOG_DEBUG, ## arg)
 #else
-#define mxt_verb(ctx, arg...) mxt_log_null(ctx, ## arg)
-#define mxt_dbg(ctx, arg...) mxt_log_null(ctx, ## arg)
+#define mxt_log_verb(ctx, arg...) mxt_log_null(ctx, ## arg)
+#define mxt_log_dbg(ctx, arg...) mxt_log_null(ctx, ## arg)
 #endif
 
-#define mxt_info(ctx, arg...) mxt_log_cond(ctx, LOG_INFO, ## arg)
-#define mxt_warn(ctx, arg...) mxt_log_cond(ctx, LOG_WARN, ## arg)
-#define mxt_err(ctx, arg...) mxt_log_cond(ctx, LOG_ERROR, ## arg)
+#define mxt_log_info(ctx, arg...) mxt_log_cond(ctx, LOG_INFO, ## arg)
+#define mxt_log_warn(ctx, arg...) mxt_log_cond(ctx, LOG_WARN, ## arg)
+#define mxt_log_err(ctx, arg...) mxt_log_cond(ctx, LOG_ERROR, ## arg)
 
 #else
 /* Disable logging */
-#define mxt_verb(ctx, arg...) mxt_log_null(ctx, ## arg)
-#define mxt_dbg(ctx, arg...) mxt_log_null(ctx, ## arg)
-#define mxt_info(ctx, arg...) mxt_log_null(ctx, ## arg)
-#define mxt_warn(ctx, arg...) mxt_log_null(ctx, ## arg)
-#define mxt_err(ctx, arg...) mxt_log_null(ctx, ## arg)
+#define mxt_log_verb(ctx, arg...) mxt_log_null(ctx, ## arg)
+#define mxt_log_dbg(ctx, arg...) mxt_log_null(ctx, ## arg)
+#define mxt_log_info(ctx, arg...) mxt_log_null(ctx, ## arg)
+#define mxt_log_warn(ctx, arg...) mxt_log_null(ctx, ## arg)
+#define mxt_log_err(ctx, arg...) mxt_log_null(ctx, ## arg)
 #endif

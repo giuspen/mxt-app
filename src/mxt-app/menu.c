@@ -4,6 +4,7 @@
 /// \author Srivalli Ineni & Iiro Valkonen.
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -169,7 +170,7 @@ static void write_to_object(struct mxt_device *mxt, int obj_num, uint8_t instanc
     buffer = (uint8_t *)calloc(MXT_SIZE(mxt->info.objects[obj_tbl_num]), sizeof(char));
     if (buffer == NULL)
     {
-        mxt_err(mxt->ctx, "Memory error");
+        mxt_log_err(mxt->ctx, "Memory error");
         return;
     }
 

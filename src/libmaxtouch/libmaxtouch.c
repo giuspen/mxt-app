@@ -4,6 +4,7 @@
 /// \author Nick Dyer
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -200,7 +201,7 @@ int mxt_new_device(struct libmaxtouch_ctx *ctx, struct mxt_conn_info *conn,
 
     if (conn == NULL)
     {
-        mxt_err(ctx, "New device connection parameters not valid");
+        mxt_log_err(ctx, "New device connection parameters not valid");
         return MXT_ERROR_NO_DEVICE;
     }
 
@@ -227,7 +228,7 @@ int mxt_new_device(struct libmaxtouch_ctx *ctx, struct mxt_conn_info *conn,
             break;
 
         default:
-            mxt_err(ctx, "Device type not supported");
+            mxt_log_err(ctx, "Device type not supported");
             ret = MXT_ERROR_NOT_SUPPORTED;
             goto failure;
     }
@@ -263,7 +264,7 @@ int mxt_get_info(struct mxt_device *mxt)
     ret = mxt_calc_report_ids(mxt);
     if (ret)
     {
-        mxt_err(mxt->ctx, "Failed to generate report ID look-up table");
+        mxt_log_err(mxt->ctx, "Failed to generate report ID look-up table");
         return ret;
     }
 
@@ -299,7 +300,7 @@ void mxt_free_device(struct mxt_device *mxt)
             break;
 
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
     }
 
 
@@ -346,7 +347,7 @@ static int mxt_read_register_block(struct mxt_device *mxt,
             break;
 
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
             ret = MXT_ERROR_NOT_SUPPORTED;
     }
 
@@ -362,7 +363,7 @@ int mxt_read_register(struct mxt_device *mxt, uint8_t *buf, int start_register, 
     size_t received;
     size_t off = 0;
 
-    mxt_verb(mxt->ctx, "%s start_register:%d count:%zu", __func__, start_register, count);
+    mxt_log_verb(mxt->ctx, "%s start_register:%d count:%zu", __func__, start_register, count);
 
     while (off < count)
     {
@@ -391,7 +392,7 @@ int mxt_write_register(struct mxt_device *mxt, uint8_t const *buf, int start_reg
 {
     int ret;
 
-    mxt_verb(mxt->ctx, "%s start_register:%d count:%zu", __func__, start_register, count);
+    mxt_log_verb(mxt->ctx, "%s start_register:%d count:%zu", __func__, start_register, count);
 
     switch (mxt->conn->type)
     {
@@ -418,7 +419,7 @@ int mxt_write_register(struct mxt_device *mxt, uint8_t const *buf, int start_reg
             break;
 
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
             ret = MXT_ERROR_NOT_SUPPORTED;
     }
 
@@ -453,7 +454,7 @@ int mxt_set_debug(struct mxt_device *mxt, bool debug_state)
             break;
 
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
             ret = MXT_ERROR_NOT_SUPPORTED;
     }
 
@@ -478,7 +479,7 @@ int mxt_get_debug(struct mxt_device *mxt, bool *value)
 
 #ifdef HAVE_LIBUSB
         case E_USB:
-            mxt_warn(mxt->ctx, "Kernel debug not supported for USB devices");
+            mxt_log_warn(mxt->ctx, "Kernel debug not supported for USB devices");
             ret = MXT_ERROR_NOT_SUPPORTED;
             break;
 #endif /* HAVE_LIBUSB */
@@ -487,7 +488,7 @@ int mxt_get_debug(struct mxt_device *mxt, bool *value)
         case E_HIDRAW:
         default:
             ret = MXT_ERROR_NOT_SUPPORTED;
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
     }
 
     return ret;
@@ -512,12 +513,12 @@ static int mxt_send_reset_command(struct mxt_device *mxt, bool bootloader_mode)
     /* The value written determines which mode the chip will boot into */
     if (bootloader_mode)
     {
-        mxt_info(mxt->ctx, "Resetting in bootloader mode");
+        mxt_log_info(mxt->ctx, "Resetting in bootloader mode");
         write_value = BOOTLOADER_COMMAND;
     }
     else
     {
-        mxt_info(mxt->ctx, "Sending reset command");
+        mxt_log_info(mxt->ctx, "Sending reset command");
     }
 
     /* Write to command processor register to perform command */
@@ -551,7 +552,7 @@ int mxt_reset_chip(struct mxt_device *mxt, bool bootloader_mode)
 #endif /* HAVE_LIBUSB */
 
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
             ret = MXT_ERROR_NOT_SUPPORTED;
     }
 
@@ -571,11 +572,11 @@ static int handle_calibrate_msg(struct mxt_device *mxt, uint8_t *msg,
     {
         if (status & 0x10)
         {
-            mxt_dbg(mxt->ctx, "Device calibrating");
+            mxt_log_dbg(mxt->ctx, "Device calibrating");
         }
         else if (!(status & 0x10) && (*last_status & 0x10))
         {
-            mxt_info(mxt->ctx, "Device calibrated");
+            mxt_log_info(mxt->ctx, "Device calibrated");
             return MXT_SUCCESS;
         }
 
@@ -607,11 +608,11 @@ int mxt_calibrate_chip(struct mxt_device *mxt)
     ret = mxt_write_register(mxt, &write_value, t6_addr + MXT_T6_CALIBRATE_OFFSET, 1);
     if (ret == 0)
     {
-        mxt_info(mxt->ctx, "Sent calibration command");
+        mxt_log_info(mxt->ctx, "Sent calibration command");
     }
     else
     {
-        mxt_err(mxt->ctx, "Failed to send calibration command");
+        mxt_log_err(mxt->ctx, "Failed to send calibration command");
     }
 
     int state = 0;
@@ -621,12 +622,12 @@ int mxt_calibrate_chip(struct mxt_device *mxt)
                             handle_calibrate_msg, &flag);
     if (ret == MXT_ERROR_TIMEOUT)
     {
-        mxt_warn(mxt->ctx, "WARN: timed out waiting for calibrate status");
+        mxt_log_warn(mxt->ctx, "WARN: timed out waiting for calibrate status");
         return MXT_SUCCESS;
     }
     else if (ret)
     {
-        mxt_err(mxt->ctx, "FAIL: device calibration failed");
+        mxt_log_err(mxt->ctx, "FAIL: device calibration failed");
         return ret;
     }
 
@@ -656,11 +657,11 @@ int mxt_backup_config(struct mxt_device *mxt, uint8_t backup_command)
 
     if (ret == MXT_SUCCESS)
     {
-        mxt_info(mxt->ctx, "Backed up settings to the non-volatile memory");
+        mxt_log_info(mxt->ctx, "Backed up settings to the non-volatile memory");
     }
     else
     {
-        mxt_err(mxt->ctx, "Failed to back up settings");
+        mxt_log_err(mxt->ctx, "Failed to back up settings");
     }
 
     return ret;
@@ -690,11 +691,11 @@ int mxt_report_all(struct mxt_device *mxt)
 
     if (ret == MXT_SUCCESS)
     {
-        mxt_info(mxt->ctx, "REPORTALL command issued");
+        mxt_log_info(mxt->ctx, "REPORTALL command issued");
     }
     else
     {
-        mxt_err(mxt->ctx, "Failed to issue REPORTALL command");
+        mxt_log_err(mxt->ctx, "Failed to issue REPORTALL command");
     }
 
     return ret;
@@ -731,7 +732,7 @@ int mxt_get_msg_count(struct mxt_device *mxt, int *count)
             break;
 
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
             ret = MXT_ERROR_NOT_SUPPORTED;
             break;
     }
@@ -768,13 +769,13 @@ char *mxt_get_msg_string(struct mxt_device *mxt)
             break;
 
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
             break;
     }
 
     if (msg_string)
     {
-        mxt_dbg(mxt->ctx, "%s", msg_string);
+        mxt_log_dbg(mxt->ctx, "%s", msg_string);
     }
 
     return msg_string;
@@ -814,7 +815,7 @@ int mxt_get_msg_bytes(struct mxt_device *mxt, unsigned char *buf,
             break;
 
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
             ret = MXT_ERROR_NOT_SUPPORTED;
             break;
     }
@@ -857,7 +858,7 @@ int mxt_msg_reset(struct mxt_device *mxt)
             break;
 
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
             ret = MXT_ERROR_NOT_SUPPORTED;
             break;
     }
@@ -899,12 +900,12 @@ int mxt_msg_wait(struct mxt_device *mxt, int timeout_ms)
     ret = poll(fds, numfds, timeout_ms);
     if (ret == -1 && errno == EINTR)
     {
-        mxt_dbg(mxt->ctx, "Interrupted");
+        mxt_log_dbg(mxt->ctx, "Interrupted");
         return MXT_ERROR_INTERRUPTED;
     }
     else if (ret < 0)
     {
-        mxt_err(mxt->ctx, "poll returned %d (%s)", errno, strerror(errno));
+        mxt_log_err(mxt->ctx, "poll returned %d (%s)", errno, strerror(errno));
         return MXT_ERROR_IO;
     }
 
@@ -930,9 +931,13 @@ int mxt_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int count)
             ret = i2c_dev_bootloader_read(mxt, buf, count);
             break;
 
+        case E_SPI_DEV:
+            ret = spi_dev_bootloader_read(mxt, buf, count);
+            break;
+
         case E_HIDRAW:
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
             ret = MXT_ERROR_NOT_SUPPORTED;
             break;
     }
@@ -952,6 +957,25 @@ static int i2c_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char c
     while (off < count)
     {
         ret = i2c_dev_bootloader_write(mxt, buf + off, count - off, &received);
+        if (ret)
+        {
+            return ret;
+        }
+
+        off += received;
+    }
+
+    return MXT_SUCCESS;
+}
+static int spi_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char const *buf, int count)
+{
+    int ret;
+    size_t received;
+    int off = 0;
+
+    while (off < count)
+    {
+        ret = spi_dev_bootloader_write(mxt, buf + off, count - off, &received);
         if (ret)
         {
             return ret;
@@ -982,9 +1006,13 @@ int mxt_bootloader_write(struct mxt_device *mxt, unsigned char const *buf, int c
             ret = i2c_dev_bootloader_write_blks(mxt, buf, count);
             break;
 
+        case E_SPI_DEV:
+            ret = spi_dev_bootloader_write_blks(mxt, buf, count);
+            break;
+
         case E_HIDRAW:
         default:
-            mxt_err(mxt->ctx, "Device type not supported");
+            mxt_log_err(mxt->ctx, "Device type not supported");
             ret = MXT_ERROR_NOT_SUPPORTED;
             break;
     }

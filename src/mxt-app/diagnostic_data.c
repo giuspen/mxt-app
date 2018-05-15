@@ -109,7 +109,7 @@ static int mxt_get_t37_page(struct t37_ctx *ctx)
 
     if (ctx->pass == 0 && ctx->page == 0)
     {
-        mxt_dbg(ctx->lc, "Writing mode command %02X", ctx->mode);
+        mxt_log_dbg(ctx->lc, "Writing mode command %02X", ctx->mode);
         ret = mxt_write_register(ctx->mxt, &ctx->mode, ctx->diag_cmd_addr, 1);
         if (ret)
         {
@@ -135,7 +135,7 @@ static int mxt_get_t37_page(struct t37_ctx *ctx)
         ret = mxt_read_register(ctx->mxt, &read_command, ctx->diag_cmd_addr, 1);
         if (ret)
         {
-            mxt_err(ctx->lc, "Failed to read the status of diagnostic mode command");
+            mxt_log_err(ctx->lc, "Failed to read the status of diagnostic mode command");
             return ret;
         }
 
@@ -145,7 +145,7 @@ static int mxt_get_t37_page(struct t37_ctx *ctx)
 
             if (failures > 500)
             {
-                mxt_err(ctx->lc, "Timeout waiting for command to be actioned");
+                mxt_log_err(ctx->lc, "Timeout waiting for command to be actioned");
                 return MXT_ERROR_TIMEOUT;
             }
         }
@@ -155,19 +155,19 @@ static int mxt_get_t37_page(struct t37_ctx *ctx)
                             ctx->t37_addr, ctx->t37_size);
     if (ret)
     {
-        mxt_err(ctx->lc, "Failed to read page");
+        mxt_log_err(ctx->lc, "Failed to read page");
         return ret;
     }
 
     if (ctx->t37_buf->mode != ctx->mode)
     {
-        mxt_err(ctx->lc, "Bad mode in diagnostic data read");
+        mxt_log_err(ctx->lc, "Bad mode in diagnostic data read");
         return MXT_ERROR_UNEXPECTED_DEVICE_STATE;
     }
 
     if (ctx->t37_buf->page != (ctx->pages_per_pass * ctx->pass + ctx->page))
     {
-        mxt_err(ctx->lc, "Bad page in diagnostic data read");
+        mxt_log_err(ctx->lc, "Bad page in diagnostic data read");
         return MXT_ERROR_UNEXPECTED_DEVICE_STATE;
     }
 
@@ -394,7 +394,7 @@ static int mxt_debug_insert_data(struct t37_ctx *ctx)
     {
         if (ctx->x_ptr > ctx->x_size)
         {
-            mxt_err(ctx->lc, "x pointer overrun");
+            mxt_log_err(ctx->lc, "x pointer overrun");
             return MXT_INTERNAL_ERROR;
         }
 
@@ -535,13 +535,13 @@ int mxt_debug_dump_initialise(struct t37_ctx *ctx)
     ret = get_objects_addr(ctx);
     if (ret)
     {
-        mxt_err(ctx->lc, "Failed to get object information");
+        mxt_log_err(ctx->lc, "Failed to get object information");
         return ret;
     }
 
-    mxt_dbg(ctx->lc, "t37_size: %d", ctx->t37_size);
+    mxt_log_dbg(ctx->lc, "t37_size: %d", ctx->t37_size);
     ctx->page_size = ctx->t37_size - 2;
-    mxt_dbg(ctx->lc, "page_size: %d", ctx->page_size);
+    mxt_log_dbg(ctx->lc, "page_size: %d", ctx->page_size);
 
     switch (ctx->mode)
     {
@@ -569,7 +569,7 @@ int mxt_debug_dump_initialise(struct t37_ctx *ctx)
             }
 
             ctx->stripe_width = ctx->y_size / ctx->passes;
-            mxt_dbg(ctx->lc, "stripe_width: %d", ctx->stripe_width);
+            mxt_log_dbg(ctx->lc, "stripe_width: %d", ctx->stripe_width);
             break;
 
         case SELF_CAP_SIGNALS:
@@ -579,13 +579,13 @@ int mxt_debug_dump_initialise(struct t37_ctx *ctx)
 
             if (id->family != 164)
             {
-                mxt_err(ctx->lc, "Self cap data not available");
+                mxt_log_err(ctx->lc, "Self cap data not available");
                 return MXT_ERROR_NOT_SUPPORTED;
             }
 
             if (ctx->t111_instances == 0)
             {
-                mxt_err(ctx->lc, "T111 not found");
+                mxt_log_err(ctx->lc, "T111 not found");
                 return MXT_ERROR_OBJECT_NOT_FOUND;
             }
 
@@ -606,13 +606,13 @@ int mxt_debug_dump_initialise(struct t37_ctx *ctx)
 
             if (id->family != 164)
             {
-                mxt_err(ctx->lc, "active stylus data not available");
+                mxt_log_err(ctx->lc, "active stylus data not available");
                 return MXT_ERROR_NOT_SUPPORTED;
             }
 
             if (ctx->t107_instances == 0)
             {
-                mxt_err(ctx->lc, "T107 not found");
+                mxt_log_err(ctx->lc, "T107 not found");
                 return MXT_ERROR_OBJECT_NOT_FOUND;
             }
 
@@ -626,21 +626,21 @@ int mxt_debug_dump_initialise(struct t37_ctx *ctx)
             break;
 
         default:
-            mxt_err(ctx->lc, "Unsupported mode %02X", ctx->mode);
+            mxt_log_err(ctx->lc, "Unsupported mode %02X", ctx->mode);
             return MXT_INTERNAL_ERROR;
     }
 
-    mxt_dbg(ctx->lc, "passes: %d", ctx->passes);
-    mxt_dbg(ctx->lc, "pages_per_pass: %d", ctx->pages_per_pass);
-    mxt_dbg(ctx->lc, "x_size: %d", ctx->x_size);
-    mxt_dbg(ctx->lc, "y_size: %d", ctx->y_size);
-    mxt_dbg(ctx->lc, "data_values: %d", ctx->data_values);
+    mxt_log_dbg(ctx->lc, "passes: %d", ctx->passes);
+    mxt_log_dbg(ctx->lc, "pages_per_pass: %d", ctx->pages_per_pass);
+    mxt_log_dbg(ctx->lc, "x_size: %d", ctx->x_size);
+    mxt_log_dbg(ctx->lc, "y_size: %d", ctx->y_size);
+    mxt_log_dbg(ctx->lc, "data_values: %d", ctx->data_values);
 
     /* allocate t37 buffers */
     ctx->t37_buf = (struct t37_diagnostic_data *)calloc(1, ctx->t37_size);
     if (!ctx->t37_buf)
     {
-        mxt_err(ctx->lc, "calloc failure");
+        mxt_log_err(ctx->lc, "calloc failure");
         return MXT_ERROR_NO_MEM;
     }
 
@@ -648,7 +648,7 @@ int mxt_debug_dump_initialise(struct t37_ctx *ctx)
     ctx->data_buf = (uint16_t *)calloc(ctx->data_values, sizeof(uint16_t));
     if (!ctx->data_buf)
     {
-        mxt_err(ctx->lc, "calloc failure");
+        mxt_log_err(ctx->lc, "calloc failure");
 
         /* free other buffer in error path */
         free(ctx->t37_buf);
@@ -677,7 +677,7 @@ int mxt_read_diagnostic_data_frame(struct t37_ctx* ctx)
 
         for (ctx->page = 0; ctx->page < ctx->pages_per_pass; ctx->page++)
         {
-            mxt_dbg(ctx->lc, "Frame %d Pass %d Page %d", ctx->frame, ctx->pass,
+            mxt_log_dbg(ctx->lc, "Frame %d Pass %d Page %d", ctx->frame, ctx->pass,
                     ctx->page);
 
             ret = mxt_get_t37_page(ctx);
@@ -704,7 +704,7 @@ static int mxt_read_diagnostic_data_self_cap(struct t37_ctx* ctx)
     {
         for (ctx->page = 0; ctx->page < ctx->pages_per_pass; ctx->page++)
         {
-            mxt_dbg(ctx->lc, "Frame %d Pass %d Page %d", ctx->frame, ctx->pass,
+            mxt_log_dbg(ctx->lc, "Frame %d Pass %d Page %d", ctx->frame, ctx->pass,
                     ctx->page);
 
             ret = mxt_get_t37_page(ctx);
@@ -745,7 +745,7 @@ int mxt_debug_dump(struct mxt_device *mxt, int mode, const char *csv_file,
 
     if (frames == 0)
     {
-        mxt_warn(ctx.lc, "Defaulting to 1 frame");
+        mxt_log_warn(ctx.lc, "Defaulting to 1 frame");
         frames = 1;
     }
 
@@ -759,7 +759,7 @@ int mxt_debug_dump(struct mxt_device *mxt, int mode, const char *csv_file,
     ctx.hawkeye = fopen(csv_file,"w");
     if (!ctx.hawkeye)
     {
-        mxt_err(ctx.lc, "Failed to open file!");
+        mxt_log_err(ctx.lc, "Failed to open file!");
         ret = MXT_ERROR_IO;
         goto free;
     }
@@ -770,7 +770,7 @@ int mxt_debug_dump(struct mxt_device *mxt, int mode, const char *csv_file,
         goto close;
     }
 
-    mxt_info(ctx.lc, "Reading %u frames", frames);
+    mxt_log_info(ctx.lc, "Reading %u frames", frames);
 
     t1 = time(NULL);
 
@@ -801,7 +801,7 @@ int mxt_debug_dump(struct mxt_device *mxt, int mode, const char *csv_file,
     }
 
     t2 = time(NULL);
-    mxt_info(ctx.lc, "%u frames in %d seconds", frames, (int)(t2-t1));
+    mxt_log_info(ctx.lc, "%u frames in %d seconds", frames, (int)(t2-t1));
 
     ret = MXT_SUCCESS;
 

@@ -70,7 +70,7 @@
 /// \brief Handle status messages from the T66 golden references object
 static void mxt_gr_print_status(struct mxt_device *mxt, uint8_t status)
 {
-    mxt_info(mxt->ctx,
+    mxt_log_info(mxt->ctx,
              "T66 state: %02X %s%s%s%s%s%s%s%s%s", status,
              (status & GR_STATE_FCALFAIL) ? "FCALFAIL " : "",
              (status & GR_STATE_FCALPASS) ? "FCALPASS " : "",
@@ -93,7 +93,7 @@ static int mxt_gr_get_status(struct mxt_device *mxt, uint8_t *msg,
 
     object_type = mxt_report_id_to_type(mxt, msg[0]);
 
-    mxt_verb(mxt->ctx, "Received message from T%u", object_type);
+    mxt_log_verb(mxt->ctx, "Received message from T%u", object_type);
 
     if (object_type == SPT_GOLDENREFERENCES_T66)
     {
@@ -121,7 +121,7 @@ static int mxt_gr_run_command(struct mxt_device *mxt, uint16_t addr, uint8_t cmd
 
     cmd |= GR_ENABLE | GR_RPTEN;
 
-    mxt_info(mxt->ctx, "Writing %u to ctrl register", cmd);
+    mxt_log_info(mxt->ctx, "Writing %u to ctrl register", cmd);
     ret = mxt_write_register(mxt, &cmd, addr + GR_CTRL, 1);
     if (ret)
     {
@@ -141,7 +141,7 @@ static int mxt_gr_run_command(struct mxt_device *mxt, uint16_t addr, uint8_t cmd
     }
     else
     {
-        mxt_err(mxt->ctx, "Failed to enter correct state");
+        mxt_log_err(mxt->ctx, "Failed to enter correct state");
         return MXT_ERROR_UNEXPECTED_DEVICE_STATE;
     }
 }
@@ -165,7 +165,7 @@ int mxt_store_golden_refs(struct mxt_device *mxt)
         return MXT_ERROR_OBJECT_NOT_FOUND;
     }
 
-    mxt_info(mxt->ctx, "Priming");
+    mxt_log_info(mxt->ctx, "Priming");
     ret = mxt_gr_run_command(mxt, addr, GR_FCALCMD_PRIME,
                              GR_STATE_PRIMED, GR_STATE_PRIMED);
     if (ret)
@@ -173,7 +173,7 @@ int mxt_store_golden_refs(struct mxt_device *mxt)
         return ret;
     }
 
-    mxt_info(mxt->ctx, "Generating");
+    mxt_log_info(mxt->ctx, "Generating");
     ret = mxt_gr_run_command(mxt, addr, GR_FCALCMD_GENERATE,
                              GR_STATE_GENERATED, GR_STATE_FCALPASS);
     if (ret)
@@ -181,7 +181,7 @@ int mxt_store_golden_refs(struct mxt_device *mxt)
         return ret;
     }
 
-    mxt_info(mxt->ctx, "Storing");
+    mxt_log_info(mxt->ctx, "Storing");
     ret = mxt_gr_run_command(mxt, addr, GR_FCALCMD_STORE,
                              GR_STATE_IDLE, GR_STATE_FCALSEQDONE);
     if (ret)
@@ -189,6 +189,6 @@ int mxt_store_golden_refs(struct mxt_device *mxt)
         return ret;
     }
 
-    mxt_info(mxt->ctx, "Done");
+    mxt_log_info(mxt->ctx, "Done");
     return MXT_SUCCESS;
 }

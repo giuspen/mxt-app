@@ -1,5 +1,7 @@
 //------------------------------------------------------------------------------
-// Copyright 2018 Solomon Systech UL Ltd. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
+//
+// Author: giuseppe.penone@solomon-systech.com
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -122,28 +124,28 @@ static int spi_open_device(struct mxt_device *mxt, int *fd_out)
     fd = open(filename, O_RDWR);
     if (fd < 0)
     {
-        mxt_err(mxt->ctx, "Could not open %s, error %s (%d)", filename, strerror(errno), errno);
+        mxt_log_err(mxt->ctx, "Could not open %s, error %s (%d)", filename, strerror(errno), errno);
         return mxt_errno_to_rc(errno);
     }
 
     ret_val = ioctl(fd, SPI_IOC_WR_MODE32, &spi_mode32);
     if (ret_val == -1)
     {
-        mxt_err(mxt->ctx, "can't set spi spi_mode32, error %s (%d)", strerror(errno), errno);
+        mxt_log_err(mxt->ctx, "can't set spi spi_mode32, error %s (%d)", strerror(errno), errno);
         close(fd);
         return mxt_errno_to_rc(errno);
     }
     ret_val = ioctl(fd, SPI_IOC_WR_BITS_PER_WORD, &spi_bits_per_word);
     if (ret_val == -1)
     {
-        mxt_err(mxt->ctx, "can't set bits per word, error %s (%d)", strerror(errno), errno);
+        mxt_log_err(mxt->ctx, "can't set bits per word, error %s (%d)", strerror(errno), errno);
         close(fd);
         return mxt_errno_to_rc(errno);
     }
     ret_val = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &spi_max_speed_hz);
     if (ret_val == -1)
     {
-        mxt_err(mxt->ctx, "can't set max speed hz, error %s (%d)", strerror(errno), errno);
+        mxt_log_err(mxt->ctx, "can't set max speed hz, error %s (%d)", strerror(errno), errno);
         close(fd);
         return mxt_errno_to_rc(errno);
     }
@@ -193,10 +195,10 @@ int spi_dev_read_register(struct mxt_device *mxt,
         {
             if (attempt > 5)
             {
-                mxt_verb(mxt->ctx, "Too many Retries\n");
+                mxt_log_verb(mxt->ctx, "Too many Retries\n");
                 return MXT_ERROR_IO;
             }
-            mxt_verb(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
+            mxt_log_verb(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
         }
         /* WRITE SPI_READ_REQ */
         spi_prepare_header(spi_tx_buf, SPI_READ_REQ, start_register, count);
@@ -205,7 +207,7 @@ int spi_dev_read_register(struct mxt_device *mxt,
         ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
         if (ret_val < 1)
         {
-            mxt_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
+            mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
             ret_val = mxt_errno_to_rc(errno);
             goto close;
         }
@@ -215,19 +217,19 @@ int spi_dev_read_register(struct mxt_device *mxt,
         ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
         if (ret_val < 1)
         {
-            mxt_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
+            mxt_log_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
             ret_val = mxt_errno_to_rc(errno);
             goto close;
         }
         if (SPI_READ_OK != spi_rx_buf[0])
         {
-            mxt_err(mxt->ctx, "SPI_READ_OK != %.2X reading from spi", spi_rx_buf[0]);
+            mxt_log_err(mxt->ctx, "SPI_READ_OK != %.2X reading from spi", spi_rx_buf[0]);
             ret_val = MXT_ERROR_PROTOCOL_FAULT;
             goto close;
         }
         if (spi_tx_buf[1] != spi_rx_buf[1] || spi_tx_buf[2] != spi_rx_buf[2])
         {
-            mxt_err(mxt->ctx, "Unexpected address %d != %d reading from spi", spi_rx_buf[1] & (spi_rx_buf[2] << 8), start_register);
+            mxt_log_err(mxt->ctx, "Unexpected address %d != %d reading from spi", spi_rx_buf[1] & (spi_rx_buf[2] << 8), start_register);
             ret_val = MXT_ERROR_PROTOCOL_FAULT;
             goto close;
         }
@@ -256,7 +258,7 @@ int spi_dev_write_register(struct mxt_device *mxt,
 
     if (count > SPI_DEV_MAX_BLOCK)
     {
-        mxt_err(mxt->ctx, "Error unexpected spi write block %d > %d", count, SPI_DEV_MAX_BLOCK);
+        mxt_log_err(mxt->ctx, "Error unexpected spi write block %d > %d", count, SPI_DEV_MAX_BLOCK);
         ret_val = MXT_INTERNAL_ERROR;
         goto close;
     }
@@ -274,10 +276,10 @@ int spi_dev_write_register(struct mxt_device *mxt,
         {
             if (attempt > 5)
             {
-                mxt_verb(mxt->ctx, "Too many Retries\n");
+                mxt_log_verb(mxt->ctx, "Too many Retries\n");
                 return MXT_ERROR_IO;
             }
-            mxt_verb(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
+            mxt_log_verb(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
         }
         /* WRITE SPI_WRITE_REQ */
         spi_prepare_header(spi_tx_buf, SPI_WRITE_REQ, start_register, count);
@@ -287,7 +289,7 @@ int spi_dev_write_register(struct mxt_device *mxt,
         ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
         if (ret_val < 1)
         {
-            mxt_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
+            mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
             ret_val = mxt_errno_to_rc(errno);
             goto close;
         }
@@ -297,25 +299,25 @@ int spi_dev_write_register(struct mxt_device *mxt,
         ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
         if (ret_val < 1)
         {
-            mxt_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
+            mxt_log_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
             ret_val = mxt_errno_to_rc(errno);
             goto close;
         }
         if (SPI_WRITE_OK != spi_rx_buf[0])
         {
-            mxt_err(mxt->ctx, "SPI_WRITE_OK != %.2X reading from spi", spi_rx_buf[0]);
+            mxt_log_err(mxt->ctx, "SPI_WRITE_OK != %.2X reading from spi", spi_rx_buf[0]);
             ret_val = MXT_ERROR_PROTOCOL_FAULT;
             goto close;
         }
         if (spi_tx_buf[1] != spi_rx_buf[1] || spi_tx_buf[2] != spi_rx_buf[2])
         {
-            mxt_err(mxt->ctx, "Unexpected address %d != %d reading from spi", spi_rx_buf[1] & (spi_rx_buf[2] << 8), start_register);
+            mxt_log_err(mxt->ctx, "Unexpected address %d != %d reading from spi", spi_rx_buf[1] & (spi_rx_buf[2] << 8), start_register);
             ret_val = MXT_ERROR_PROTOCOL_FAULT;
             goto close;
         }
         if (spi_tx_buf[3] != spi_rx_buf[3] || spi_tx_buf[4] != spi_rx_buf[4])
         {
-            mxt_err(mxt->ctx, "Unexpected count %d != %d reading from spi", spi_rx_buf[3] & (spi_rx_buf[4] << 8), count);
+            mxt_log_err(mxt->ctx, "Unexpected count %d != %d reading from spi", spi_rx_buf[3] & (spi_rx_buf[4] << 8), count);
             ret_val = MXT_ERROR_PROTOCOL_FAULT;
             goto close;
         }
