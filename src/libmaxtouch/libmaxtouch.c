@@ -403,6 +403,10 @@ int mxt_write_register(struct mxt_device *mxt, uint8_t const *buf, int start_reg
             ret = i2c_dev_write_register(mxt, buf, start_register, count);
             break;
 
+        case E_SPI_DEV:
+            ret = spi_dev_write_register(mxt, buf, start_register, count);
+            break;
+
 #ifdef HAVE_LIBUSB
         case E_USB:
             ret = usb_write_register(mxt, buf, start_register, count);
