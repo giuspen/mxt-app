@@ -288,15 +288,9 @@ int spi_dev_write_register(struct mxt_device *mxt,
                            uint16_t count)
 {
     int fd = -ENODEV;
-    int ret_val, attempt=0;
+    int ret_val;
+    uint16_t offset = 0;
     spi_ioc_tr.rx_buf = (unsigned long)spi_rx_buf;
-
-    if (count > SPI_DEV_MAX_BLOCK)
-    {
-        mxt_log_err(mxt->ctx, "Error unexpected spi write block %d > %d", count, SPI_DEV_MAX_BLOCK);
-        ret_val = MXT_INTERNAL_ERROR;
-        goto close;
-    }
 
     ret_val = spi_open_device(mxt, &fd);
     if (ret_val)
@@ -304,61 +298,74 @@ int spi_dev_write_register(struct mxt_device *mxt,
         return ret_val;
     }
 
-    do
+    while (offset < count)
     {
-        attempt++;
-        if (attempt > 1)
+        int attempt = 0;
+        uint16_t count_iter = count - offset;
+        uint16_t address_iter = start_register + offset;
+        if (count_iter > SPI_DEV_MAX_BLOCK)
         {
-            if (attempt > 5)
+            count_iter = SPI_DEV_MAX_BLOCK;
+        }
+
+        do
+        {
+            attempt++;
+            if (attempt > 1)
             {
-                mxt_log_err(mxt->ctx, "Too many Retries\n");
-                return MXT_ERROR_IO;
+                if (attempt > 5)
+                {
+                    mxt_log_err(mxt->ctx, "Too many Retries\n");
+                    return MXT_ERROR_IO;
+                }
+                mxt_log_warn(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
             }
-            mxt_log_warn(mxt->ctx, "Retry %d after CRC fail\n", attempt-1);
+            /* WRITE SPI_WRITE_REQ */
+            spi_prepare_header(spi_tx_buf, SPI_WRITE_REQ, address_iter, count_iter);
+            memcpy(spi_tx_buf + SPI_HEADER_LEN, buf + offset, count_iter);
+            spi_ioc_tr.tx_buf = (unsigned long)spi_tx_buf;
+            spi_ioc_tr.len = SPI_HEADER_LEN + count_iter;
+            ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
+            if (ret_val < 1)
+            {
+                mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
+                ret_val = mxt_errno_to_rc(errno);
+                goto close;
+            }
+            usleep(SPI_SLEEP_USEC_READ_AFTER_WRITE); //TODO use CHG instead
+            /* READ SPI_WRITE_OK */
+            spi_ioc_tr.tx_buf = (unsigned long)spi_tx_dummy_buf;
+            spi_ioc_tr.len = SPI_HEADER_LEN;
+            ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
+            if (ret_val < 1)
+            {
+                mxt_log_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
+                ret_val = mxt_errno_to_rc(errno);
+                goto close;
+            }
+            if (SPI_WRITE_OK != spi_rx_buf[0])
+            {
+                mxt_log_err(mxt->ctx, "SPI_WRITE_OK != %.2X reading from spi", spi_rx_buf[0]);
+                ret_val = MXT_ERROR_PROTOCOL_FAULT;
+                goto close;
+            }
+            if (spi_tx_buf[1] != spi_rx_buf[1] || spi_tx_buf[2] != spi_rx_buf[2])
+            {
+                mxt_log_err(mxt->ctx, "Unexpected address %d != %d reading from spi", spi_rx_buf[1] | (spi_rx_buf[2] << 8), address_iter);
+                ret_val = MXT_ERROR_PROTOCOL_FAULT;
+                goto close;
+            }
+            if (spi_tx_buf[3] != spi_rx_buf[3] || spi_tx_buf[4] != spi_rx_buf[4])
+            {
+                mxt_log_err(mxt->ctx, "Unexpected count %d != %d reading from spi", spi_rx_buf[3] | (spi_rx_buf[4] << 8), count_iter);
+                ret_val = MXT_ERROR_PROTOCOL_FAULT;
+                goto close;
+            }
         }
-        /* WRITE SPI_WRITE_REQ */
-        spi_prepare_header(spi_tx_buf, SPI_WRITE_REQ, start_register, count);
-        memcpy(spi_tx_buf + SPI_HEADER_LEN, buf, count);
-        spi_ioc_tr.tx_buf = (unsigned long)spi_tx_buf;
-        spi_ioc_tr.len = SPI_HEADER_LEN + count;
-        ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
-        if (ret_val < 1)
-        {
-            mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
-            ret_val = mxt_errno_to_rc(errno);
-            goto close;
-        }
-        usleep(SPI_SLEEP_USEC_READ_AFTER_WRITE); //TODO use CHG instead
-        /* READ SPI_WRITE_OK */
-        spi_ioc_tr.tx_buf = (unsigned long)spi_tx_dummy_buf;
-        spi_ioc_tr.len = SPI_HEADER_LEN;
-        ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
-        if (ret_val < 1)
-        {
-            mxt_log_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
-            ret_val = mxt_errno_to_rc(errno);
-            goto close;
-        }
-        if (SPI_WRITE_OK != spi_rx_buf[0])
-        {
-            mxt_log_err(mxt->ctx, "SPI_WRITE_OK != %.2X reading from spi", spi_rx_buf[0]);
-            ret_val = MXT_ERROR_PROTOCOL_FAULT;
-            goto close;
-        }
-        if (spi_tx_buf[1] != spi_rx_buf[1] || spi_tx_buf[2] != spi_rx_buf[2])
-        {
-            mxt_log_err(mxt->ctx, "Unexpected address %d != %d reading from spi", spi_rx_buf[1] | (spi_rx_buf[2] << 8), start_register);
-            ret_val = MXT_ERROR_PROTOCOL_FAULT;
-            goto close;
-        }
-        if (spi_tx_buf[3] != spi_rx_buf[3] || spi_tx_buf[4] != spi_rx_buf[4])
-        {
-            mxt_log_err(mxt->ctx, "Unexpected count %d != %d reading from spi", spi_rx_buf[3] | (spi_rx_buf[4] << 8), count);
-            ret_val = MXT_ERROR_PROTOCOL_FAULT;
-            goto close;
-        }
+        while (get_header_crc(spi_rx_buf) != spi_rx_buf[SPI_HEADER_LEN-1]);
+
+        offset += count_iter;
     }
-    while (get_header_crc(spi_rx_buf) != spi_rx_buf[SPI_HEADER_LEN-1]);
 
     ret_val = MXT_SUCCESS;
 
