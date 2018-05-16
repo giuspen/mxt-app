@@ -54,62 +54,62 @@ static int self_test_handle_messages(struct mxt_device *mxt, uint8_t *msg,
     unsigned int object_type = mxt_report_id_to_type(mxt, msg[0]);
     int ret;
 
-    mxt_verb(mxt->ctx, "Received message from T%u", object_type);
+    mxt_log_verb(mxt->ctx, "Received message from T%u", object_type);
 
     if (object_type == SPT_SELFTEST_T25)
     {
         switch (msg[1])
         {
             case SELF_TEST_ALL:
-                mxt_info(mxt->ctx, "PASS: All tests passed");
+                mxt_log_info(mxt->ctx, "PASS: All tests passed");
                 ret = MXT_SUCCESS;
                 break;
             case SELF_TEST_INVALID:
-                mxt_err(mxt->ctx, "FAIL: Invalid or unsupported test command");
+                mxt_log_err(mxt->ctx, "FAIL: Invalid or unsupported test command");
                 ret = MXT_ERROR_NOT_SUPPORTED;
                 break;
             case SELF_TEST_TIMEOUT:
-                mxt_err(mxt->ctx, "FAIL: Test timeout");
+                mxt_log_err(mxt->ctx, "FAIL: Test timeout");
                 ret = MXT_ERROR_TIMEOUT;
                 break;
             case SELF_TEST_ANALOG:
-                mxt_err(mxt->ctx, "FAIL: AVdd Analog power is not present");
+                mxt_log_err(mxt->ctx, "FAIL: AVdd Analog power is not present");
                 ret = MXT_ERROR_SELF_TEST_ANALOG;
                 break;
             case SELF_TEST_PIN_FAULT:
-                mxt_err(mxt->ctx, "FAIL: Pin fault");
+                mxt_log_err(mxt->ctx, "FAIL: Pin fault");
                 ret = MXT_ERROR_SELF_TEST_PIN_FAULT;
                 break;
             case SELF_TEST_PIN_FAULT_2:
                 if (msg[3] == 0 && msg[4] == 0)
                 {
-                    mxt_err(mxt->ctx, "FAIL: Pin fault SEQ_NUM=%d driven shield line failed");
+                    mxt_log_err(mxt->ctx, "FAIL: Pin fault SEQ_NUM=%d driven shield line failed");
                 }
                 else if (msg[3] > 0)
                 {
-                    mxt_err(mxt->ctx, "FAIL: Pin fault SEQ_NUM=%d X%d", msg[2], msg[3] - 1);
+                    mxt_log_err(mxt->ctx, "FAIL: Pin fault SEQ_NUM=%d X%d", msg[2], msg[3] - 1);
                 }
                 else if (msg[4] > 0)
                 {
-                    mxt_err(mxt->ctx, "FAIL: Pin fault SEQ_NUM=%d Y%d", msg[2], msg[4] - 1);
+                    mxt_log_err(mxt->ctx, "FAIL: Pin fault SEQ_NUM=%d Y%d", msg[2], msg[4] - 1);
                 }
 
                 ret = MXT_ERROR_SELF_TEST_PIN_FAULT;
                 break;
             case SELF_TEST_AND_GATE:
-                mxt_err(mxt->ctx, "FAIL: AND Gate Fault");
+                mxt_log_err(mxt->ctx, "FAIL: AND Gate Fault");
                 ret = MXT_ERROR_SELF_TEST_AND_GATE;
                 break;
             case SELF_TEST_SIGNAL_LIMIT:
-                mxt_err(mxt->ctx, "FAIL: Signal limit fault in T%d[%d]", msg[2], msg[3]);
+                mxt_log_err(mxt->ctx, "FAIL: Signal limit fault in T%d[%d]", msg[2], msg[3]);
                 ret = MXT_ERROR_SELF_TEST_SIGNAL_LIMIT;
                 break;
             case SELF_TEST_GAIN:
-                mxt_err(mxt->ctx, "FAIL: Gain error");
+                mxt_log_err(mxt->ctx, "FAIL: Gain error");
                 ret = MXT_ERROR_SELF_TEST_GAIN;
                 break;
             default:
-                mxt_err(mxt->ctx, "FAIL: status %02X", msg[1]);
+                mxt_log_err(mxt->ctx, "FAIL: status %02X", msg[1]);
                 ret = MXT_ERROR_UNEXPECTED_DEVICE_STATE;
                 break;
         }
@@ -146,7 +146,7 @@ static int print_touch_object_limits(struct mxt_device *mxt, uint16_t t25_addr,
 
         enabled = buf[0] & 0x01;
 
-        mxt_info(mxt->ctx, "%s[%d] %s",
+        mxt_log_info(mxt->ctx, "%s[%d] %s",
                  mxt_get_object_name(object_type),
                  instance,
                  enabled ? "enabled":"disabled");
@@ -164,8 +164,8 @@ static int print_touch_object_limits(struct mxt_device *mxt, uint16_t t25_addr,
             upsiglim = (uint16_t)((buf[1] << 8u) | buf[0]);
             losiglim = (uint16_t)((buf[3] << 8u) | buf[2]);
 
-            mxt_info(mxt->ctx, "  UPSIGLIM:%d", upsiglim);
-            mxt_info(mxt->ctx, "  LOSIGLIM:%d", losiglim);
+            mxt_log_info(mxt->ctx, "  UPSIGLIM:%d", upsiglim);
+            mxt_log_info(mxt->ctx, "  LOSIGLIM:%d", losiglim);
         }
 
         (*touch_object)++;
@@ -262,10 +262,10 @@ int run_self_tests(struct mxt_device *mxt, uint8_t cmd)
 
     // Enable self test object & reporting
     t25_addr = mxt_get_object_address(mxt, SPT_SELFTEST_T25, 0);
-    mxt_info(mxt->ctx, "Enabling self test object");
+    mxt_log_info(mxt->ctx, "Enabling self test object");
     mxt_write_register(mxt, &enable, t25_addr, 1);
 
-    mxt_info(mxt->ctx, "Disabling noise suppression");
+    mxt_log_info(mxt->ctx, "Disabling noise suppression");
     disable_noise_suppression(mxt);
 
     ret = print_t25_limits(mxt, t25_addr);
@@ -277,31 +277,31 @@ int run_self_tests(struct mxt_device *mxt, uint8_t cmd)
     switch (cmd)
     {
         case SELF_TEST_ANALOG:
-            mxt_info(mxt->ctx, "Running Analog power test");
+            mxt_log_info(mxt->ctx, "Running Analog power test");
             break;
         case SELF_TEST_PIN_FAULT:
-            mxt_info(mxt->ctx, "Running Pin fault test");
+            mxt_log_info(mxt->ctx, "Running Pin fault test");
             break;
         case SELF_TEST_PIN_FAULT_2:
-            mxt_info(mxt->ctx, "Running Pin fault 2 test");
+            mxt_log_info(mxt->ctx, "Running Pin fault 2 test");
             break;
         case SELF_TEST_AND_GATE:
-            mxt_info(mxt->ctx, "Running AND Gate test");
+            mxt_log_info(mxt->ctx, "Running AND Gate test");
             break;
         case SELF_TEST_SIGNAL_LIMIT:
-            mxt_info(mxt->ctx, "Running Signal Limit test");
+            mxt_log_info(mxt->ctx, "Running Signal Limit test");
             break;
         case SELF_TEST_GAIN:
-            mxt_info(mxt->ctx, "Running Gain test");
+            mxt_log_info(mxt->ctx, "Running Gain test");
             break;
         case SELF_TEST_OFFSET:
-            mxt_info(mxt->ctx, "Running Offset test");
+            mxt_log_info(mxt->ctx, "Running Offset test");
             break;
         case SELF_TEST_ALL:
-            mxt_info(mxt->ctx, "Running all tests");
+            mxt_log_info(mxt->ctx, "Running all tests");
             break;
         default:
-            mxt_info(mxt->ctx, "Writing %02X to CMD register", cmd);
+            mxt_log_info(mxt->ctx, "Writing %02X to CMD register", cmd);
             break;
     }
 

@@ -65,6 +65,8 @@ libmaxtouch_la_SOURCES =\
 	src/libmaxtouch/sysfs/dmesg.c \
 	src/libmaxtouch/i2c_dev/i2c_dev_device.h \
 	src/libmaxtouch/i2c_dev/i2c_dev_device.c \
+	src/libmaxtouch/spi_dev/spi_dev_device.h \
+	src/libmaxtouch/spi_dev/spi_dev_device.c \
 	src/libmaxtouch/hidraw/hidraw_device.h \
 	src/libmaxtouch/hidraw/hidraw_device.c
 

@@ -1,10 +1,8 @@
 #pragma once
 //------------------------------------------------------------------------------
-/// \file   dmesg.h
-/// \brief  Header for dmesg handling
-//------------------------------------------------------------------------------
-// Copyright 2011 Atmel Corporation. All rights reserved.
 // Copyright 2018 Solomon Systech. All rights reserved.
+//
+// Author: giuseppe.penone@solomon-systech.com
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -28,9 +26,22 @@
 // EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //------------------------------------------------------------------------------
 
-char *dmesg_get_msg_string(struct mxt_device *mxt);
-int dmesg_get_msgs(struct mxt_device *mxt, int *count, bool init_timestamp);
-int dmesg_get_msg_bytes(struct mxt_device *mxt, unsigned char *buf, size_t buflen, int *count);
-int dmesg_reset(struct mxt_device *mxt);
-int dmesg_alloc_buffer(struct mxt_device *mxt);
-void dmesg_free_buffer(struct mxt_device *mxt);
+#define SPI_DEV_MAX_BLOCK  64
+
+struct spi_dev_conn_info
+{
+    int bus;
+    int chipselect;
+};
+
+struct spi_dev_device
+{
+};
+
+int spi_dev_read_register(struct mxt_device *mxt, uint8_t *buf, uint16_t start_register, uint16_t count, size_t *bytes_read);
+
+int spi_dev_write_register(struct mxt_device *mxt, uint8_t const *buf, uint16_t start_register, uint16_t count);
+
+int spi_dev_bootloader_read(struct mxt_device *mxt, uint8_t *buf, uint16_t count);
+
+int spi_dev_bootloader_write(struct mxt_device *mxt, uint8_t const *buf, uint16_t count, size_t *bytes_transferred);

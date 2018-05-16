@@ -4,6 +4,7 @@
 /// \author Nick Dyer
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -68,7 +69,7 @@ JNIEXPORT jboolean JNICALL Java_com_atmel_Maxtouch_MaxtouchJni_Scan
   mxt_set_log_fn(ctx, mxt_log_android);
   mxt_set_log_level(ctx, 4);
 
-  mxt_info(ctx, "libmaxtouch %s", MXT_VERSION);
+  mxt_log_info(ctx, "libmaxtouch %s", MXT_VERSION);
 
   ret = mxt_scan(ctx, &conn, false);
   if (ret)

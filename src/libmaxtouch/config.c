@@ -169,7 +169,7 @@ static int mxt_write_object_config(struct mxt_device *mxt,
 
     if (device_size > objcfg->size)
     {
-        mxt_warn(mxt->ctx, "Extending config by %d bytes in T%u",
+        mxt_log_warn(mxt->ctx, "Extending config by %d bytes in T%u",
                  device_size - objcfg->size, objcfg->type);
         num_bytes = objcfg->size;
     }
@@ -178,7 +178,7 @@ static int mxt_write_object_config(struct mxt_device *mxt,
         /* Either we are in fallback mode due to wrong
          * config or config from a later fw version,
          * or the file is corrupt or hand-edited */
-        mxt_warn(mxt->ctx, "Discarding %u bytes in T%u",
+        mxt_log_warn(mxt->ctx, "Discarding %u bytes in T%u",
                  objcfg->size - device_size, objcfg->type);
         num_bytes = device_size;
     }
@@ -194,7 +194,7 @@ static int mxt_write_object_config(struct mxt_device *mxt,
     ret = mxt_write_register(mxt, obj_buf, obj_addr, num_bytes);
     if (ret)
     {
-        mxt_err(mxt->ctx, "Config write error, ret=%d", ret);
+        mxt_log_err(mxt->ctx, "Config write error, ret=%d", ret);
         return ret;
     }
 
@@ -214,25 +214,25 @@ static int mxt_write_device_config(struct mxt_device *mxt,
      * from a different chip or firmware version, so the configuration CRC
      * is invalid anyway. */
     if (cfg->info_crc && cfg->info_crc != mxt->info.crc)
-        mxt_warn(mxt->ctx, "Info Block CRC mismatch - device=0x%06X "
+        mxt_log_warn(mxt->ctx, "Info Block CRC mismatch - device=0x%06X "
                  "file=0x%06X - attempting to apply config",
                  mxt->info.crc, cfg->info_crc);
 
-    mxt_info(mxt->ctx, "Writing config to chip");
+    mxt_log_info(mxt->ctx, "Writing config to chip");
 
     while (objcfg)
     {
-        mxt_verb(mxt->ctx, "T%d instance %d size %d",
+        mxt_log_verb(mxt->ctx, "T%d instance %d size %d",
                  objcfg->type, objcfg->instance, objcfg->size);
 
         ret = mxt_write_object_config(mxt, objcfg);
         if (ret == MXT_ERROR_OBJECT_NOT_FOUND)
         {
-            mxt_warn(mxt->ctx, "T%d not present", objcfg->type);
+            mxt_log_warn(mxt->ctx, "T%d not present", objcfg->type);
         }
         else if (ret == MXT_ERROR_OBJECT_IS_VOLATILE)
         {
-            mxt_warn(mxt->ctx, "Skipping volatile T%d", objcfg->type);
+            mxt_log_warn(mxt->ctx, "Skipping volatile T%d", objcfg->type);
         }
         else if (ret)
         {
@@ -291,7 +291,7 @@ static int mxt_read_device_config(struct mxt_device *mxt,
             if (!objcfg->data)
             {
                 free(objcfg);
-                mxt_err(mxt->ctx, "Failed to allocate memory");
+                mxt_log_err(mxt->ctx, "Failed to allocate memory");
                 ret = MXT_ERROR_NO_MEM;
                 goto free;
             }
@@ -310,7 +310,7 @@ static int mxt_read_device_config(struct mxt_device *mxt,
         }
     }
 
-    mxt_info(mxt->ctx, "Read config from device");
+    mxt_log_info(mxt->ctx, "Read config from device");
 
     return MXT_SUCCESS;
 
@@ -335,7 +335,7 @@ static int mxt_save_raw_file(struct libmaxtouch_ctx *ctx,
     fp = fopen(filename, "w");
     if (fp == NULL)
     {
-        mxt_err(ctx, "Error opening %s: %s", filename, strerror(errno));
+        mxt_log_err(ctx, "Error opening %s: %s", filename, strerror(errno));
         return mxt_errno_to_rc(errno);
     }
 
@@ -391,7 +391,7 @@ static int mxt_save_raw_file(struct libmaxtouch_ctx *ctx,
 
     fclose(fp);
 
-    mxt_info(ctx, "Saved config to %s in OBP_RAW format", filename);
+    mxt_log_info(ctx, "Saved config to %s in OBP_RAW format", filename);
     return MXT_SUCCESS;
 
 fprintf_error:
@@ -415,7 +415,7 @@ static int mxt_save_xcfg_file(struct libmaxtouch_ctx *ctx,
     fp = fopen(filename, "w");
     if (fp == NULL)
     {
-        mxt_err(ctx, "Error opening %s: %s", filename, strerror(errno));
+        mxt_log_err(ctx, "Error opening %s: %s", filename, strerror(errno));
         return mxt_errno_to_rc(errno);
     }
 
@@ -501,7 +501,7 @@ static int mxt_save_xcfg_file(struct libmaxtouch_ctx *ctx,
     fclose(fp);
 
     ret = MXT_SUCCESS;
-    mxt_info(ctx, "Saved config to %s in .xcfg format", filename);
+    mxt_log_info(ctx, "Saved config to %s in .xcfg format", filename);
     return MXT_SUCCESS;
 
 fprintf_error:
@@ -536,7 +536,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
     fp = fopen(filename, "r");
     if (fp == NULL)
     {
-        mxt_err(ctx, "Error opening %s: %s", filename, strerror(errno));
+        mxt_log_err(ctx, "Error opening %s: %s", filename, strerror(errno));
         return mxt_errno_to_rc(errno);
     }
 
@@ -562,14 +562,14 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
                 continue;
             }
 
-            mxt_err(ctx, "Parse error: expected '[', read ascii char %c!", c);
+            mxt_log_err(ctx, "Parse error: expected '[', read ascii char %c!", c);
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
 
         if (fscanf(fp, "%[^] ]", object) != 1)
         {
-            mxt_err(ctx, "Object parse error");
+            mxt_log_err(ctx, "Object parse error");
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
@@ -579,7 +579,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
                 || !strcmp(object, "APPLICATION_INFO_HEADER"))
         {
             ignore_line = true;
-            mxt_dbg(ctx, "Skipping %s", object);
+            mxt_log_dbg(ctx, "Skipping %s", object);
             continue;
         }
 
@@ -592,14 +592,14 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
             {
                 if (fscanf(fp, "%s", tmp) != 1)
                 {
-                    mxt_err(ctx, "Version info header parse error");
+                    mxt_log_err(ctx, "Version info header parse error");
                     ret = MXT_ERROR_FILE_FORMAT;
                     goto close;
                 }
                 if (!strncmp(tmp, "CHECKSUM", 8))
                 {
                     sscanf(tmp, "%[^'=']=%x", object, &cfg->config_crc);
-                    mxt_dbg(ctx, "Config CRC from file: %s", tmp);
+                    mxt_log_dbg(ctx, "Config CRC from file: %s", tmp);
                     ignore_line = true;
                 }
             }
@@ -608,21 +608,21 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
 
         if (fscanf(fp, "%s", tmp) != 1)
         {
-            mxt_err(ctx, "Instance parse error");
+            mxt_log_err(ctx, "Instance parse error");
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
 
         if (strcmp(tmp, "INSTANCE"))
         {
-            mxt_err(ctx, "Parse error, expected INSTANCE, got %s", tmp);
+            mxt_log_err(ctx, "Parse error, expected INSTANCE, got %s", tmp);
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
 
         if (fscanf(fp, "%d", &instance) != 1)
         {
-            mxt_err(ctx, "Instance number parse error");
+            mxt_log_err(ctx, "Instance number parse error");
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
@@ -633,7 +633,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
             c = getc(fp);
             if (c == '\n')
             {
-                mxt_err(ctx, "Parse error, expected ] before end of line");
+                mxt_log_err(ctx, "Parse error, expected ] before end of line");
                 ret = MXT_ERROR_FILE_FORMAT;
                 goto close;
             }
@@ -651,7 +651,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
 
         if (fscanf(fp, "%d", &object_address) != 1)
         {
-            mxt_err(ctx, "Object address parse error");
+            mxt_log_err(ctx, "Object address parse error");
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
@@ -664,7 +664,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
 
         if (fscanf(fp, "%d", &object_size) != 1)
         {
-            mxt_err(ctx, "Object size parse error");
+            mxt_log_err(ctx, "Object size parse error");
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
@@ -675,19 +675,19 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
         substr = strrchr(object, '_');
         if (substr == NULL || (*(substr + 1) != 'T'))
         {
-            mxt_err(ctx, "Parse error, could not find T number in %s", object);
+            mxt_log_err(ctx, "Parse error, could not find T number in %s", object);
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
 
         if (sscanf(substr + 2, "%d", &object_id) != 1)
         {
-            mxt_err(ctx, "Unable to get object type ID for %s", object);
+            mxt_log_err(ctx, "Unable to get object type ID for %s", object);
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
 
-        mxt_dbg(ctx, "%s T%u OBJECT_ADDRESS=%d OBJECT_SIZE=%d",
+        mxt_log_dbg(ctx, "%s T%u OBJECT_ADDRESS=%d OBJECT_SIZE=%d",
                 object, object_id, object_address, object_size);
 
         objcfg = calloc(1, sizeof(struct mxt_object_config));
@@ -709,7 +709,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
         objcfg->data = calloc(object_size, sizeof(uint8_t));
         if (!objcfg->data)
         {
-            mxt_err(ctx, "Failed to allocate memory");
+            mxt_log_err(ctx, "Failed to allocate memory");
             ret = MXT_ERROR_NO_MEM;
             goto close;
         }
@@ -743,7 +743,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
             /* Read address */
             if (fscanf(fp, "%d", &offset) != 1)
             {
-                mxt_err(ctx, "Address parse error");
+                mxt_log_err(ctx, "Address parse error");
                 ret = MXT_ERROR_FILE_FORMAT;
                 goto close;
             }
@@ -751,7 +751,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
             /* Read byte count of this register (max 2) */
             if (fscanf(fp, "%d", &width) != 1)
             {
-                mxt_err(ctx, "Byte count parse error");
+                mxt_log_err(ctx, "Byte count parse error");
                 ret = MXT_ERROR_FILE_FORMAT;
                 goto close;
             }
@@ -763,7 +763,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
 
             if (fscanf(fp, "%d", &data) != 1)
             {
-                mxt_err(ctx, "Data parse error");
+                mxt_log_err(ctx, "Data parse error");
                 ret = MXT_ERROR_FILE_FORMAT;
                 goto close;
             }
@@ -786,7 +786,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
                     objcfg->data[offset + 3] = (char) ((data >> 24) & 0xFF);
                     break;
                 default:
-                    mxt_err(ctx, "Only 1, 2 and 4 byte config values are supported");
+                    mxt_log_err(ctx, "Only 1, 2 and 4 byte config values are supported");
                     ret = MXT_ERROR_FILE_FORMAT;
                     goto close;
             }
@@ -794,7 +794,7 @@ static int mxt_load_xcfg_file(struct libmaxtouch_ctx *ctx, const char *filename,
     }
 
     ret = MXT_SUCCESS;
-    mxt_info(ctx, "Configuration read from %s in XCFG format", filename);
+    mxt_log_info(ctx, "Configuration read from %s in XCFG format", filename);
 
 close:
     fclose(fp);
@@ -819,24 +819,24 @@ static int mxt_load_raw_file(struct libmaxtouch_ctx *ctx, const char *filename,
     fp = fopen(filename, "r");
     if (fp == NULL)
     {
-        mxt_err(ctx, "Error opening %s: %s", filename, strerror(errno));
+        mxt_log_err(ctx, "Error opening %s: %s", filename, strerror(errno));
         return mxt_errno_to_rc(errno);
     }
 
     if (fgets(line, sizeof(line), fp) == NULL)
     {
-        mxt_err(ctx, "Unexpected EOF");
+        mxt_log_err(ctx, "Unexpected EOF");
     }
 
     if (strncmp(line, OBP_RAW_MAGIC, strlen(OBP_RAW_MAGIC)))
     {
-        mxt_warn(ctx, "Not in OBP_RAW format");
+        mxt_log_warn(ctx, "Not in OBP_RAW format");
         ret = MXT_ERROR_FILE_FORMAT;
         goto close;
     }
     else
     {
-        mxt_dbg(ctx, "Loading OBP_RAW file");
+        mxt_log_dbg(ctx, "Loading OBP_RAW file");
     }
 
     /* Load information block and check */
@@ -845,7 +845,7 @@ static int mxt_load_raw_file(struct libmaxtouch_ctx *ctx, const char *filename,
         ret = fscanf(fp, "%hhx", (unsigned char *)&cfg->id + i);
         if (ret != 1)
         {
-            mxt_err(ctx, "Bad format");
+            mxt_log_err(ctx, "Bad format");
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
@@ -855,7 +855,7 @@ static int mxt_load_raw_file(struct libmaxtouch_ctx *ctx, const char *filename,
     ret = fscanf(fp, "%x", &cfg->info_crc);
     if (ret != 1)
     {
-        mxt_err(ctx, "Bad format: failed to parse Info CRC");
+        mxt_log_err(ctx, "Bad format: failed to parse Info CRC");
         ret = MXT_ERROR_FILE_FORMAT;
         goto close;
     }
@@ -863,7 +863,7 @@ static int mxt_load_raw_file(struct libmaxtouch_ctx *ctx, const char *filename,
     ret = fscanf(fp, "%x", &cfg->config_crc);
     if (ret != 1)
     {
-        mxt_err(ctx, "Bad format: failed to parse Config CRC");
+        mxt_log_err(ctx, "Bad format: failed to parse Config CRC");
         ret = MXT_ERROR_FILE_FORMAT;
         goto close;
     }
@@ -889,13 +889,13 @@ static int mxt_load_raw_file(struct libmaxtouch_ctx *ctx, const char *filename,
         }
         else if (ret != 3)
         {
-            mxt_err(ctx, "Bad format: failed to parse object");
+            mxt_log_err(ctx, "Bad format: failed to parse object");
             free(objcfg);
             ret = MXT_ERROR_FILE_FORMAT;
             goto close;
         }
 
-        mxt_dbg(ctx, "OBP_RAW T%u instance %u", objcfg->type, objcfg->instance);
+        mxt_log_dbg(ctx, "OBP_RAW T%u instance %u", objcfg->type, objcfg->instance);
 
         *next = objcfg;
         next = &objcfg->next;
@@ -904,7 +904,7 @@ static int mxt_load_raw_file(struct libmaxtouch_ctx *ctx, const char *filename,
         objcfg->data = calloc(objcfg->size, sizeof(uint8_t));
         if (!objcfg->data)
         {
-            mxt_err(ctx, "Failed to allocate memory");
+            mxt_log_err(ctx, "Failed to allocate memory");
             ret = MXT_ERROR_NO_MEM;
             goto close;
         }
@@ -916,7 +916,7 @@ static int mxt_load_raw_file(struct libmaxtouch_ctx *ctx, const char *filename,
             ret = fscanf(fp, "%hhx", &val);
             if (ret != 1)
             {
-                mxt_err(ctx, "Parse error in T%d", objcfg->type);
+                mxt_log_err(ctx, "Parse error in T%d", objcfg->type);
                 ret = MXT_ERROR_FILE_FORMAT;
                 free(objcfg->data);
                 goto close;
@@ -929,7 +929,7 @@ static int mxt_load_raw_file(struct libmaxtouch_ctx *ctx, const char *filename,
     }
 
     ret = MXT_SUCCESS;
-    mxt_info(ctx, "Configuration read from %s in OBP_RAW format", filename);
+    mxt_log_info(ctx, "Configuration read from %s in OBP_RAW format", filename);
 
 close:
     fclose(fp);
@@ -967,7 +967,7 @@ static int mxt_get_config_from_file(struct libmaxtouch_ctx *ctx,
     else
     {
         ret = MXT_INTERNAL_ERROR;
-        mxt_err(ctx, "Config is null");
+        mxt_log_err(ctx, "Config is null");
     }
     return ret;
 }
@@ -1030,13 +1030,13 @@ int mxt_zero_config(struct mxt_device *mxt)
     struct mxt_id_info *id = mxt->info.id;
     int ret;
 
-    mxt_info(mxt->ctx, "Zeroing all configuration settings...");
+    mxt_log_info(mxt->ctx, "Zeroing all configuration settings...");
 
     /* Single buffer to match MAX object size*/
     buf = (uint8_t *)calloc(1, MXT_OBJECT_SIZE_MAX);
     if (buf == NULL)
     {
-        mxt_err(mxt->ctx, "Failed to allocate memory");
+        mxt_log_err(mxt->ctx, "Failed to allocate memory");
         return MXT_ERROR_NO_MEM;
     }
 
@@ -1087,7 +1087,7 @@ int mxt_checkcrc(struct libmaxtouch_ctx *ctx, struct mxt_device *mxt, char *file
     {
         if (cfg.config_type == CONFIG_RAW)
         {
-            mxt_err(ctx, "RAW config format only supported with chip present");
+            mxt_log_err(ctx, "RAW config format only supported with chip present");
             ret = MXT_ERROR_NO_DEVICE;
             goto free;
         }
@@ -1134,14 +1134,14 @@ int mxt_checkcrc(struct libmaxtouch_ctx *ctx, struct mxt_device *mxt, char *file
         }
     }
 
-    mxt_verb(ctx, "CRC start_pos:%d end_pos:%d", start_pos, end_pos);
+    mxt_log_verb(ctx, "CRC start_pos:%d end_pos:%d", start_pos, end_pos);
 
     /* Allocate buffer for CRC calculation */
     uint8_t *buffer = (uint8_t *)calloc(end_pos, sizeof(uint8_t));
     if (!buffer)
     {
         ret = MXT_ERROR_NO_MEM;
-        mxt_err(ctx, "Could not allocate memory for buffer");
+        mxt_log_err(ctx, "Could not allocate memory for buffer");
         goto free;
     }
 
@@ -1168,12 +1168,12 @@ int mxt_checkcrc(struct libmaxtouch_ctx *ctx, struct mxt_device *mxt, char *file
 
     if (calc_crc == cfg.config_crc)
     {
-        mxt_info(ctx, "File checksum verified: %d", cfg.config_crc);
+        mxt_log_info(ctx, "File checksum verified: %d", cfg.config_crc);
         ret = MXT_SUCCESS;
     }
     else
     {
-        mxt_err(ctx, "Checksum error: calc=%06X file=%06X", calc_crc, cfg.config_crc);
+        mxt_log_err(ctx, "Checksum error: calc=%06X file=%06X", calc_crc, cfg.config_crc);
         ret = MXT_ERROR_CHECKSUM_MISMATCH;
     }
 

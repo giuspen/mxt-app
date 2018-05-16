@@ -78,7 +78,7 @@ struct t68_ctx
 /// \brief Print T68 status messages
 static void mxt_t68_print_status(struct t68_ctx *ctx, uint8_t status)
 {
-    mxt_info(ctx->lc, "T68 status: %02X %s%s%s%s%s%s%s",
+    mxt_log_info(ctx->lc, "T68 status: %02X %s%s%s%s%s%s%s",
              status,
              (status == 0x00) ? "Success/No error" : "",
              (status == 0x01) ? "Command supplied in CMD.COMMAND is out of sequence" : "",
@@ -99,7 +99,7 @@ static int mxt_t68_get_status(struct mxt_device *mxt, uint8_t *msg,
     unsigned int object_type = mxt_report_id_to_type(mxt, msg[0]);
     uint8_t status;
 
-    mxt_verb(mxt->ctx, "Received message from T%u", object_type);
+    mxt_log_verb(mxt->ctx, "Received message from T%u", object_type);
 
     if (object_type == SERIAL_DATA_COMMAND_T68)
     {
@@ -124,7 +124,7 @@ static int mxt_t68_command(struct t68_ctx *ctx, uint8_t cmd)
 {
     int ret;
 
-    mxt_verb(ctx->lc, "Writing %u to CMD register", cmd);
+    mxt_log_verb(ctx->lc, "Writing %u to CMD register", cmd);
     ret = mxt_write_register(ctx->mxt, &cmd, ctx->t68_cmd_addr, 1);
     if (ret)
     {
@@ -142,8 +142,8 @@ static int mxt_t68_enable(struct t68_ctx *ctx)
     int ret;
     uint8_t cmd = T68_CTRL_RPTEN | T68_CTRL_ENABLE;
 
-    mxt_dbg(ctx->lc, "Enabling T68 object");
-    mxt_verb(ctx->lc, "Writing %u to ctrl register", cmd);
+    mxt_log_dbg(ctx->lc, "Enabling T68 object");
+    mxt_log_verb(ctx->lc, "Writing %u to ctrl register", cmd);
 
     ret = mxt_write_register(ctx->mxt, &cmd, ctx->t68_addr + T68_CTRL, 1);
     if (ret)
@@ -171,14 +171,14 @@ static int mxt_t68_load_file(struct t68_ctx *ctx)
     fp = fopen(ctx->filename, "r");
     if (fp == NULL)
     {
-        mxt_err(ctx->lc, "Error opening %s", ctx->filename);
+        mxt_log_err(ctx->lc, "Error opening %s", ctx->filename);
         return mxt_errno_to_rc(errno);
     }
 
     ret = mxt_buf_init(&ctx->buf);
     if (ret)
     {
-        mxt_err(ctx->lc, "Error initialising buffer");
+        mxt_log_err(ctx->lc, "Error initialising buffer");
         goto close;
     }
 
@@ -205,18 +205,18 @@ static int mxt_t68_load_file(struct t68_ctx *ctx)
                 goto fail;
             }
 
-            mxt_verb(ctx->lc, "[%s]", buf);
+            mxt_log_verb(ctx->lc, "[%s]", buf);
 
             if (!strncasecmp(buf, "datatype=", 9))
             {
                 if (sscanf(buf + 9, "%d", &c) != 1)
                 {
-                    mxt_warn(ctx->lc, "Unable to parse datatype");
+                    mxt_log_warn(ctx->lc, "Unable to parse datatype");
                 }
                 else
                 {
                     ctx->t68_datatype = c;
-                    mxt_info(ctx->lc, "DATATYPE set to %u by file", ctx->t68_datatype);
+                    mxt_log_info(ctx->lc, "DATATYPE set to %u by file", ctx->t68_datatype);
                 }
             }
 
@@ -232,7 +232,7 @@ static int mxt_t68_load_file(struct t68_ctx *ctx)
         {
             if (fscanf(fp, "x%2su", (char *)&buf) != 1)
             {
-                mxt_err(ctx->lc, "Parse error");
+                mxt_log_err(ctx->lc, "Parse error");
                 ret = MXT_ERROR_FILE_FORMAT;
                 goto fail;
             }
@@ -251,13 +251,13 @@ static int mxt_t68_load_file(struct t68_ctx *ctx)
         }
         else
         {
-            mxt_err(ctx->lc, "Unexpected character \"%c\"", c);
+            mxt_log_err(ctx->lc, "Unexpected character \"%c\"", c);
             ret = MXT_ERROR_FILE_FORMAT;
             goto fail;
         }
     }
 
-    mxt_info(ctx->lc, "Loaded file %s, %zu bytes", ctx->filename, ctx->buf.size);
+    mxt_log_info(ctx->lc, "Loaded file %s, %zu bytes", ctx->filename, ctx->buf.size);
 
     return MXT_SUCCESS;
 
@@ -273,7 +273,7 @@ close:
 /// \return #mxt_rc
 static int mxt_t68_write_length(struct t68_ctx *ctx, uint8_t length)
 {
-    mxt_dbg(ctx->lc, "Writing LENGTH=%u", length);
+    mxt_log_dbg(ctx->lc, "Writing LENGTH=%u", length);
 
     return mxt_write_register(ctx->mxt, &length, ctx->t68_addr + T68_LENGTH, 1);
 }
@@ -285,7 +285,7 @@ static int mxt_t68_zero_data(struct t68_ctx *ctx)
 {
     uint8_t zeros[ctx->t68_data_size];
 
-    mxt_dbg(ctx->lc, "Zeroing DATA");
+    mxt_log_dbg(ctx->lc, "Zeroing DATA");
 
     memset(&zeros, 0, sizeof(zeros));
 
@@ -309,11 +309,11 @@ static int mxt_t68_send_frames(struct t68_ctx *ctx)
     {
         frame_size = MIN(ctx->buf.size - offset, ctx->t68_data_size);
 
-        mxt_info(ctx->lc, "Writing frame %u, %u bytes", frame, frame_size);
+        mxt_log_info(ctx->lc, "Writing frame %u, %u bytes", frame, frame_size);
 
         if (frame_size > UCHAR_MAX)
         {
-            mxt_err(ctx->lc, "Serial data frame size miscalculation");
+            mxt_log_err(ctx->lc, "Serial data frame size miscalculation");
             return MXT_INTERNAL_ERROR;
         }
 
@@ -368,7 +368,7 @@ static int mxt_t68_write_datatype(struct t68_ctx *ctx)
     buf[0] = (ctx->t68_datatype & 0xFF);
     buf[1] = (ctx->t68_datatype & 0xFF00) >> 8;
 
-    mxt_info(ctx->lc, "Writing %u to DATATYPE register", ctx->t68_datatype);
+    mxt_log_info(ctx->lc, "Writing %u to DATATYPE register", ctx->t68_datatype);
     return mxt_write_register(ctx->mxt, &buf[0], ctx->t68_addr + T68_DATATYPE, sizeof(buf));
 }
 
@@ -394,11 +394,11 @@ static int mxt_t68_check_power_cfg(struct t68_ctx *ctx)
         return ret;
     }
 
-    mxt_verb(ctx->lc, "T7 IDLEACQINT=%u ACTVACQINT=%u", buf[0], buf[1]);
+    mxt_log_verb(ctx->lc, "T7 IDLEACQINT=%u ACTVACQINT=%u", buf[0], buf[1]);
 
     if ((buf[0] == 0) || (buf[1] == 0))
     {
-        mxt_err(ctx->lc, "Warning: The T7 power configuration object shows that the chip "
+        mxt_log_err(ctx->lc, "Warning: The T7 power configuration object shows that the chip "
                 "is in deep sleep, and so will not process T68 serial data "
                 "commands. Please set the T7 power configuration idle acquisition "
                 "interval to a non-zero value and try again.");
@@ -428,7 +428,7 @@ int mxt_serial_data_upload(struct mxt_device *mxt, const char *filename, uint16_
         return ret;
     }
 
-    mxt_info(ctx.lc, "Checking T7 Power Config");
+    mxt_log_info(ctx.lc, "Checking T7 Power Config");
     ret = mxt_t68_check_power_cfg(&ctx);
     if (ret)
     {
@@ -478,22 +478,22 @@ int mxt_serial_data_upload(struct mxt_device *mxt, const char *filename, uint16_
         goto release;
     }
 
-    mxt_info(ctx.lc, "Configuring T68");
+    mxt_log_info(ctx.lc, "Configuring T68");
     ret = mxt_t68_write_datatype(&ctx);
     if (ret)
     {
         goto release;
     }
 
-    mxt_info(ctx.lc, "Sending data");
+    mxt_log_info(ctx.lc, "Sending data");
     ret = mxt_t68_send_frames(&ctx);
     if (ret)
     {
-        mxt_err(ctx.lc, "Error sending data");
+        mxt_log_err(ctx.lc, "Error sending data");
         goto release;
     }
 
-    mxt_info(ctx.lc, "Done");
+    mxt_log_info(ctx.lc, "Done");
     ret = MXT_SUCCESS;
 
 release:

@@ -107,7 +107,7 @@ int t44_get_msg_bytes(struct mxt_device *mxt, unsigned char *buf,
     size = mxt_get_object_size(mxt, GEN_MESSAGEPROCESSOR_T5) - 1;
     if (size > buflen)
     {
-        mxt_err(mxt->ctx, "Buffer too small!");
+        mxt_log_err(mxt->ctx, "Buffer too small!");
         return MXT_ERROR_NO_MEM;
     }
 
@@ -120,7 +120,7 @@ int t44_get_msg_bytes(struct mxt_device *mxt, unsigned char *buf,
     /* Check for invalid message */
     if (buf[0] == 255u)
     {
-        mxt_verb(mxt->ctx, "Invalid message");
+        mxt_log_verb(mxt->ctx, "Invalid message");
         return MXT_ERROR_NO_MESSAGE;
     }
 
@@ -139,7 +139,7 @@ int t44_msg_reset(struct mxt_device *mxt)
     ret = t44_get_msg_count(mxt, &count);
     if (ret)
     {
-        mxt_verb(mxt->ctx, "rc = %d", ret);
+        mxt_log_verb(mxt->ctx, "rc = %d", ret);
         return ret;
     }
 
@@ -148,7 +148,7 @@ int t44_msg_reset(struct mxt_device *mxt)
         ret = t44_get_msg_bytes(mxt, &databuf[0], sizeof(databuf), &size);
         if (ret)
         {
-            mxt_verb(mxt->ctx, "rc = %d", ret);
+            mxt_log_verb(mxt->ctx, "rc = %d", ret);
             return ret;
         }
     }
@@ -216,7 +216,7 @@ int mxt_read_messages(struct mxt_device *mxt, int timeout_seconds, void *context
             now = time(NULL);
             if ((now - start_time) > timeout_seconds)
             {
-                mxt_err(mxt->ctx, "Timeout");
+                mxt_log_err(mxt->ctx, "Timeout");
                 return MXT_ERROR_TIMEOUT;
             }
         }
@@ -232,7 +232,7 @@ int mxt_flush_msgs(struct mxt_device *mxt)
 {
     int dummy;
 
-    mxt_dbg(mxt->ctx, "Flushing messages");
+    mxt_log_dbg(mxt->ctx, "Flushing messages");
 
     return mxt_get_msg_count(mxt, &dummy);
 }

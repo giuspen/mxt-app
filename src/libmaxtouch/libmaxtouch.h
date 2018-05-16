@@ -5,6 +5,7 @@
 /// \author Nick Dyer
 //------------------------------------------------------------------------------
 // Copyright 2011 Atmel Corporation. All rights reserved.
+// Copyright 2018 Solomon Systech. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -43,6 +44,7 @@ struct mxt_conn_info;
 #include "log.h"
 #include "sysfs/sysfs_device.h"
 #include "i2c_dev/i2c_dev_device.h"
+#include "spi_dev/spi_dev_device.h"
 #ifdef HAVE_LIBUSB
 #include "usb/usb_device.h"
 #endif
@@ -124,6 +126,7 @@ enum mxt_device_type
     E_USB,
 #endif
     E_I2C_DEV,
+    E_SPI_DEV,
     E_HIDRAW,
 };
 
@@ -157,6 +160,7 @@ struct mxt_conn_info
     union
     {
         struct i2c_dev_conn_info i2c_dev;
+        struct spi_dev_conn_info spi_dev;
         struct hidraw_conn_info hidraw;
         struct sysfs_conn_info sysfs;
 #ifdef HAVE_LIBUSB
@@ -182,6 +186,7 @@ struct mxt_device
         struct usb_device usb;
 #endif
         struct i2c_dev_device i2c_dev;
+        struct spi_dev_device spi_dev;
     };
 };
 

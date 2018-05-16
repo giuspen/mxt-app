@@ -60,7 +60,7 @@ static int mxt_self_cap_command(struct mxt_device *mxt, uint8_t *msg,
     unsigned int object_type = mxt_report_id_to_type(mxt, msg[0]);
     uint8_t *cmd = context;
 
-    mxt_verb(mxt->ctx, "Received message from T%u", object_type);
+    mxt_log_verb(mxt->ctx, "Received message from T%u", object_type);
 
     if (object_type == SPT_SELFCAPGLOBALCONFIG_T109)
     {
@@ -109,7 +109,7 @@ int mxt_self_cap_tune(struct mxt_device *mxt, mxt_app_cmd cmd)
         return MXT_ERROR_OBJECT_NOT_FOUND;
     }
 
-    mxt_info(mxt->ctx, "Stopping T70");
+    mxt_log_info(mxt->ctx, "Stopping T70");
     backupnv_value = 0x33;
     ret = mxt_write_register(mxt, &backupnv_value, t6_addr + MXT_T6_BACKUPNV_OFFSET, 1);
     if (ret)
@@ -120,9 +120,9 @@ int mxt_self_cap_tune(struct mxt_device *mxt, mxt_app_cmd cmd)
     // Wait for backup operation to complete (otherwise T109 report may be missed)
     mxt_msg_wait(mxt, 100);
 
-    mxt_info(mxt->ctx, "Tuning");
+    mxt_log_info(mxt->ctx, "Tuning");
     t109_command = T109_CMD_TUNE;
-    mxt_info(mxt->ctx, "Writing %u to T109 CMD register", cmd);
+    mxt_log_info(mxt->ctx, "Writing %u to T109 CMD register", cmd);
     ret = mxt_write_register(mxt, &t109_command, t109_addr + T109_CMD_OFFSET, 1);
     if (ret)
     {
@@ -138,17 +138,17 @@ int mxt_self_cap_tune(struct mxt_device *mxt, mxt_app_cmd cmd)
     switch (cmd)
     {
         case CMD_SELF_CAP_TUNE_CONFIG:
-            mxt_info(mxt->ctx, "Store to Config");
+            mxt_log_info(mxt->ctx, "Store to Config");
             t109_command = T109_CMD_STORE_TO_CONFIG_RAM;
             break;
 
         default:
         case CMD_SELF_CAP_TUNE_NVRAM:
-            mxt_info(mxt->ctx, "Store to NVRAM");
+            mxt_log_info(mxt->ctx, "Store to NVRAM");
             t109_command = T109_CMD_STORE_TO_NVM;
             break;
     }
-    mxt_info(mxt->ctx, "Writing %u to T109 CMD register", cmd);
+    mxt_log_info(mxt->ctx, "Writing %u to T109 CMD register", cmd);
     ret = mxt_write_register(mxt, &t109_command, t109_addr + T109_CMD_OFFSET, 1);
     if (ret)
     {
@@ -161,7 +161,7 @@ int mxt_self_cap_tune(struct mxt_device *mxt, mxt_app_cmd cmd)
         return ret;
     }
 
-    mxt_info(mxt->ctx, "Saving configuration");
+    mxt_log_info(mxt->ctx, "Saving configuration");
     ret = mxt_backup_config(mxt, BACKUPNV_COMMAND);
     if (ret)
     {
