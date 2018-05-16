@@ -192,7 +192,9 @@ int i2c_dev_write_register(struct mxt_device *mxt, unsigned char const *val,
 //******************************************************************************
 /// \brief  Bootloader read
 /// \return #mxt_rc
-int i2c_dev_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int count)
+int i2c_dev_bootloader_read(struct mxt_device *mxt,
+                            unsigned char *buf,
+                            int count)
 {
     int fd = -ENODEV;
     int ret_val;
@@ -222,10 +224,12 @@ int i2c_dev_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int coun
 //******************************************************************************
 /// \brief  Bootloader write
 /// \return #mxt_rc
-int i2c_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf,
-                             int count, size_t *bytes_read)
+static int i2c_dev_bootloader_write(struct mxt_device *mxt,
+                                    unsigned char const *buf,
+                                    int count,
+                                    size_t *bytes_read,
+                                    int fd)
 {
-    int fd = -ENODEV;
     int ret_val;
 
     if (count > mxt->ctx->i2c_block_size)
@@ -233,13 +237,7 @@ int i2c_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf,
         count = mxt->ctx->i2c_block_size;
     }
 
-    ret_val = open_and_set_slave_address(mxt, &fd);
-    if (ret_val)
-    {
-        return ret_val;
-    }
-
-    mxt_log_dbg(mxt->ctx, "Writing %d bytes", count);
+    mxt_log_dbg(mxt->ctx, "I2C Writing %d bytes", count);
 
     if (write(fd, buf, count) != count)
     {
@@ -248,33 +246,47 @@ int i2c_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf,
     }
     else
     {
+        *bytes_read = count;
         ret_val = MXT_SUCCESS;
     }
 
-    *bytes_read = count;
-    close(fd);
     return ret_val;
 }
 
 //******************************************************************************
 /// \brief Write to bootloader
 /// \return #mxt_rc
-int i2c_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char const *buf, int count)
+int i2c_dev_bootloader_write_blks(struct mxt_device *mxt,
+                                  unsigned char const *buf,
+                                  int count)
 {
-    int ret;
-    size_t received;
-    int off = 0;
+    int ret_val;
+    int offset = 0;
+    int fd = -ENODEV;
 
-    while (off < count)
+    ret_val = open_and_set_slave_address(mxt, &fd);
+    if (ret_val)
     {
-        ret = i2c_dev_bootloader_write(mxt, buf + off, count - off, &received);
-        if (ret)
-        {
-            return ret;
-        }
-
-        off += received;
+        return ret_val;
     }
 
-    return MXT_SUCCESS;
+    while (offset < count)
+    {
+        size_t count_iter;
+        ret_val = i2c_dev_bootloader_write(mxt,
+                                           buf + offset,
+                                           count - offset,
+                                           &count_iter,
+                                           fd);
+        if (MXT_SUCCESS != ret_val)
+        {
+            break;
+        }
+
+        offset += count_iter;
+    }
+
+    close(fd);
+
+    return ret_val;
 }

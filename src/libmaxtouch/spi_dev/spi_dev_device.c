@@ -384,30 +384,23 @@ close:
 
 int spi_dev_bootloader_read(struct mxt_device *mxt, uint8_t *buf, uint16_t count)
 {
-    return MXT_SUCCESS;
-}
-
-int spi_dev_bootloader_write(struct mxt_device *mxt, uint8_t const *buf, uint16_t count, size_t *bytes_transferred)
-{
-    return MXT_SUCCESS;
-}
-
-int spi_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char const *buf, int count)
-{
-    int ret;
-    size_t received;
-    int off = 0;
-
-    while (off < count)
+    int ret_val;
+    if (count > SPI_DEV_MAX_BLOCK)
     {
-        ret = spi_dev_bootloader_write(mxt, buf + off, count - off, &received);
-        if (ret)
-        {
-            return ret;
-        }
-
-        off += received;
+        mxt_log_err(mxt->ctx, "Unexpected bootloader read %d > %d", count, SPI_DEV_MAX_BLOCK);
+        ret_val = MXT_INTERNAL_ERROR;
     }
+    else
+    {
+        int bytes_read;
+        ret_val = spi_dev_read_register(mxt, buf, 0, count, &bytes_read);
+    }
+    return ret_val;
+}
 
-    return MXT_SUCCESS;
+int spi_dev_bootloader_write_blks(struct mxt_device *mxt,
+                                  unsigned char const *buf,
+                                  int count)
+{
+    return spi_dev_write_register(mxt, buf, 0, count);
 }

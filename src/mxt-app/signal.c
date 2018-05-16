@@ -102,9 +102,10 @@ sig_atomic_t mxt_get_sigint_flag(void)
 /// \param  context Additional context required by msg_func
 /// \param  msg_func Pointer to function to read object status
 /// \return #mxt_rc
-int mxt_read_messages_sigint(struct mxt_device *mxt, int timeout_seconds, void *context,
-                             int (*msg_func)(struct mxt_device *mxt, uint8_t *msg,
-                                     void *context, uint8_t size))
+int mxt_read_messages_sigint(struct mxt_device *mxt,
+                             int timeout_seconds,
+                             void *context,
+                             int (*msg_func)(struct mxt_device *mxt, uint8_t *msg, void *context, uint8_t size))
 {
     int ret;
     struct sigaction sa;

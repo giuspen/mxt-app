@@ -168,9 +168,11 @@ int t44_msg_reset(struct mxt_device *mxt)
 /// \param  msg_func Pointer to function to read object status
 /// \param  flag Pointer to control flag
 /// \return #mxt_rc
-int mxt_read_messages(struct mxt_device *mxt, int timeout_seconds, void *context,
-                      int (*msg_func)(struct mxt_device *mxt, uint8_t *msg,
-                                      void *context, uint8_t size), int *flag)
+int mxt_read_messages(struct mxt_device *mxt,
+                      int timeout_seconds,
+                      void *context,
+                      int (*msg_func)(struct mxt_device *mxt, uint8_t *msg, void *context, uint8_t size),
+                      int *flag)
 {
     int count, len;
     time_t now;
