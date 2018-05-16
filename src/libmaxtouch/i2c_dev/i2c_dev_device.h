@@ -37,6 +37,7 @@ struct i2c_dev_conn_info
 {
     int adapter;
     int address;
+    int gpio;
 };
 
 //******************************************************************************
@@ -52,3 +53,5 @@ int i2c_dev_write_register(struct mxt_device *mxt, unsigned char const *buf, int
 int i2c_dev_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int count);
 
 int i2c_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf, int count, size_t *bytes_transferred);
+
+int i2c_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char const *buf, int count);

@@ -255,3 +255,26 @@ int i2c_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf,
     close(fd);
     return ret_val;
 }
+
+//******************************************************************************
+/// \brief Write to bootloader
+/// \return #mxt_rc
+int i2c_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char const *buf, int count)
+{
+    int ret;
+    size_t received;
+    int off = 0;
+
+    while (off < count)
+    {
+        ret = i2c_dev_bootloader_write(mxt, buf + off, count - off, &received);
+        if (ret)
+        {
+            return ret;
+        }
+
+        off += received;
+    }
+
+    return MXT_SUCCESS;
+}

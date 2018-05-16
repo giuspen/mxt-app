@@ -165,8 +165,10 @@ static void print_usage(char *prog_name)
             "  -q [--query]               : scan for devices\n"
             "  -d [--device] DEVICESTRING : DEVICESTRING as output by --query\n\n"
             "  Examples:\n"
-            "    -d i2c-dev:ADAPTER-ADDRESS : raw i2c device, eg \"i2c-dev:2-004a\"\n"
-            "    -d spi-dev:BUS-CHIPSELECT  : raw spi device, eg \"spi-dev:1-0\"\n"
+            "    -d i2c-dev:ADAPTER-ADDRESS     : raw i2c device, eg \"i2c-dev:2-004a\"\n"
+            "    -d i2c-dev:ADAPTER-ADDRESS-CHG : raw i2c device, + linux CHG gpio num, eg \"i2c-dev:2-004a-48\"\n"
+            "    -d spi-dev:BUS-CHIPSELECT      : raw spi device, eg \"spi-dev:1-0\"\n"
+            "    -d spi-dev:BUS-CHIPSELECT-CHG  : raw spi device + linux CHG gpio num, eg \"spi-dev:1-0-48\"\n"
 #ifdef HAVE_LIBUSB
             "    -d usb:BUS-DEVICE          : USB device, eg \"usb:001-003\"\n"
 #endif
@@ -524,11 +526,22 @@ int main (int argc, char *argv[])
                             return ret;
                         }
 
-                        if (2 != sscanf(optarg, "i2c-dev:%d-%x", &conn->i2c_dev.adapter, &conn->i2c_dev.address))
+                        if (3 != sscanf(optarg, "i2c-dev:%d-%x-%d", &conn->i2c_dev.adapter,
+                                                                    &conn->i2c_dev.address,
+                                                                    &conn->i2c_dev.gpio))
                         {
-                            fprintf(stderr, "Invalid device string %s\n", optarg);
-                            conn = mxt_unref_conn(conn);
-                            return MXT_ERROR_NO_MEM;
+                            conn->i2c_dev.gpio = -1;
+                            if (2 != sscanf(optarg, "i2c-dev:%d-%x", &conn->i2c_dev.adapter,
+                                                                     &conn->i2c_dev.address))
+                            {
+                                fprintf(stderr, "Invalid device string %s\n", optarg);
+                                conn = mxt_unref_conn(conn);
+                                return MXT_ERROR_NO_MEM;
+                            }
+                        }
+                        else
+                        {
+                            printf("CHG GPIO %d\n", conn->i2c_dev.gpio);
                         }
                     }
                     else if (0 == strncmp(optarg, "spi-dev:", 8))
@@ -539,11 +552,22 @@ int main (int argc, char *argv[])
                             return ret;
                         }
 
-                        if (2 != sscanf(optarg, "spi-dev:%d-%d", &conn->spi_dev.bus, &conn->spi_dev.chipselect))
+                        if (3 != sscanf(optarg, "spi-dev:%d-%d-%d", &conn->spi_dev.bus,
+                                                                    &conn->spi_dev.chipselect,
+                                                                    &conn->spi_dev.gpio))
                         {
-                            fprintf(stderr, "Invalid device string %s\n", optarg);
-                            conn = mxt_unref_conn(conn);
-                            return MXT_ERROR_NO_MEM;
+                            conn->spi_dev.gpio = -1;
+                            if (2 != sscanf(optarg, "spi-dev:%d-%d", &conn->spi_dev.bus,
+                                                                     &conn->spi_dev.chipselect))
+                            {
+                                fprintf(stderr, "Invalid device string %s\n", optarg);
+                                conn = mxt_unref_conn(conn);
+                                return MXT_ERROR_NO_MEM;
+                            }
+                        }
+                        else
+                        {
+                            printf("CHG GPIO %d\n", conn->spi_dev.gpio);
                         }
                     }
                     else if (!strncmp(optarg, "sysfs:", 6))

@@ -32,6 +32,7 @@ struct spi_dev_conn_info
 {
     int bus;
     int chipselect;
+    int gpio;
 };
 
 struct spi_dev_device
@@ -45,3 +46,5 @@ int spi_dev_write_register(struct mxt_device *mxt, uint8_t const *buf, uint16_t 
 int spi_dev_bootloader_read(struct mxt_device *mxt, uint8_t *buf, uint16_t count);
 
 int spi_dev_bootloader_write(struct mxt_device *mxt, uint8_t const *buf, uint16_t count, size_t *bytes_transferred);
+
+int spi_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char const *buf, int count);

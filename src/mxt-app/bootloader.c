@@ -63,7 +63,6 @@
 #define FIRMWARE_BUFFER_SIZE     1024
 
 #define MXT_RESET_TIME           2
-#define MXT_BOOTLOADER_DELAY     50000
 
 //******************************************************************************
 /// \brief Bootloader context object
@@ -84,51 +83,6 @@ struct flash_context
     const char *new_version;
     bool usb_bootloader;
 };
-
-//******************************************************************************
-/// \brief Wait for CHG line to indicate bootloader state change
-/// \return #mxt_rc
-static int wait_for_chg(struct mxt_device *mxt)
-{
-#ifdef HAVE_LIBUSB
-    int try = 0;
-    int ret;
-    bool chg;
-
-    if (mxt->conn->type == E_USB)
-    {
-        while (true)
-        {
-            ret = usb_read_chg(mxt, &chg);
-            if (ret)
-            {
-                return ret;
-            }
-
-            if (!chg)
-            {
-                break;
-            }
-
-            if (++try > 100)
-                {
-                    mxt_log_warn(mxt->ctx, "Timed out awaiting CHG");
-                    return MXT_ERROR_TIMEOUT;
-                }
-
-            usleep(1000);
-        }
-
-        mxt_log_verb(mxt->ctx, "CHG line cycles %d", try);
-    }
-    else
-#endif
-    {
-        usleep(MXT_BOOTLOADER_DELAY);
-    }
-
-    return MXT_SUCCESS;
-}
 
 //******************************************************************************
 /// \brief Send a frame with length field set to 0x0000. This should force a
@@ -173,7 +127,7 @@ static int mxt_check_bootloader(struct flash_context *fw, unsigned int state)
 recheck:
     if (state != MXT_WAITING_BOOTLOAD_CMD)
     {
-        wait_for_chg(fw->mxt);
+        mxt_wait_for_chg(fw->mxt);
     }
 
     if ((!fw->have_bootloader_version) && fw->extended_id_mode

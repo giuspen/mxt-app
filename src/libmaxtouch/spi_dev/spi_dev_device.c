@@ -69,8 +69,6 @@ struct mxt_conn_info;
 // 5 CRC
 // 6+ Data[]
 
-#define SPI_SLEEP_USEC_READ_AFTER_WRITE  270
-
 static uint32_t spi_mode32 = SPI_CPHA | SPI_CPOL;
 static uint8_t spi_bits_per_word = 8;
 static uint32_t spi_max_speed_hz = 8000000; // 8 MHz
@@ -241,7 +239,12 @@ int spi_dev_read_register(struct mxt_device *mxt,
             ret_val = mxt_errno_to_rc(errno);
             goto close;
         }
-        usleep(SPI_SLEEP_USEC_READ_AFTER_WRITE); //TODO use CHG instead
+
+        if (MXT_SUCCESS != mxt_wait_for_chg(mxt))
+        {
+            mxt_log_err(mxt->ctx, "Timeout on CHG");
+        }
+
         //hex_dump(spi_tx_buf, spi_ioc_tr.len, 32, "TX");
         //hex_dump(spi_rx_buf, spi_ioc_tr.len, 32, "RX");
         /* READ SPI_READ_OK */
@@ -332,7 +335,12 @@ int spi_dev_write_register(struct mxt_device *mxt,
                 ret_val = mxt_errno_to_rc(errno);
                 goto close;
             }
-            usleep(SPI_SLEEP_USEC_READ_AFTER_WRITE); //TODO use CHG instead
+
+            if (MXT_SUCCESS != mxt_wait_for_chg(mxt))
+            {
+                mxt_log_err(mxt->ctx, "Timeout on CHG");
+            }
+
             /* READ SPI_WRITE_OK */
             spi_ioc_tr.tx_buf = (unsigned long)spi_tx_dummy_buf;
             spi_ioc_tr.len = SPI_HEADER_LEN;
@@ -381,5 +389,25 @@ int spi_dev_bootloader_read(struct mxt_device *mxt, uint8_t *buf, uint16_t count
 
 int spi_dev_bootloader_write(struct mxt_device *mxt, uint8_t const *buf, uint16_t count, size_t *bytes_transferred)
 {
+    return MXT_SUCCESS;
+}
+
+int spi_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char const *buf, int count)
+{
+    int ret;
+    size_t received;
+    int off = 0;
+
+    while (off < count)
+    {
+        ret = spi_dev_bootloader_write(mxt, buf + off, count - off, &received);
+        if (ret)
+        {
+            return ret;
+        }
+
+        off += received;
+    }
+
     return MXT_SUCCESS;
 }

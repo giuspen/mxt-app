@@ -34,6 +34,8 @@
 #include <string.h>
 #include <poll.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "libmaxtouch.h"
 #include "libmaxtouch/sysfs/dmesg.h"
@@ -957,48 +959,6 @@ int mxt_bootloader_read(struct mxt_device *mxt, unsigned char *buf, int count)
 //******************************************************************************
 /// \brief Write to bootloader
 /// \return #mxt_rc
-static int i2c_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char const *buf, int count)
-{
-    int ret;
-    size_t received;
-    int off = 0;
-
-    while (off < count)
-    {
-        ret = i2c_dev_bootloader_write(mxt, buf + off, count - off, &received);
-        if (ret)
-        {
-            return ret;
-        }
-
-        off += received;
-    }
-
-    return MXT_SUCCESS;
-}
-static int spi_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char const *buf, int count)
-{
-    int ret;
-    size_t received;
-    int off = 0;
-
-    while (off < count)
-    {
-        ret = spi_dev_bootloader_write(mxt, buf + off, count - off, &received);
-        if (ret)
-        {
-            return ret;
-        }
-
-        off += received;
-    }
-
-    return MXT_SUCCESS;
-}
-
-//******************************************************************************
-/// \brief Write to bootloader
-/// \return #mxt_rc
 int mxt_bootloader_write(struct mxt_device *mxt, unsigned char const *buf, int count)
 {
     int ret;
@@ -1051,4 +1011,100 @@ int mxt_errno_to_rc(int errno_in)
         default:
             return MXT_ERROR_IO;
     }
+}
+
+//******************************************************************************
+/// \brief Get GPIO value given linux gpio num
+/// \return #mxt_rc
+int mxt_get_gpio_value(unsigned int gpio)
+{
+    int fd, ret_val;
+    char buf[64];
+    char ch;
+
+    snprintf(buf, 64, "/sys/class/gpio/gpio%d/value", gpio);
+
+    fd = open(buf, O_RDONLY);
+    if (fd < 0)
+    {
+        perror("gpio/get-value");
+        return fd;
+    }
+
+    ret_val = read(fd, &ch, 1);
+    if (1 == ret_val)
+    {
+        ret_val = ch != '0' ? 1 : 0;
+    }
+    else
+    {
+        ret_val = -1;
+    }
+
+    close(fd);
+    //printf("gpio%d = %d\n", gpio, ret_val);
+    return ret_val;
+}
+
+//******************************************************************************
+/// \brief Wait for CHG line to indicate bootloader state change
+/// \return #mxt_rc
+int mxt_wait_for_chg(struct mxt_device *mxt)
+{
+    int ret_val;
+#ifdef HAVE_LIBUSB
+    int try = 0;
+    int ret;
+    bool chg;
+
+    if (E_USB == mxt->conn->type)
+    {
+        while (true)
+        {
+            ret = usb_read_chg(mxt, &chg);
+            if (ret)
+            {
+                return ret;
+            }
+
+            if (!chg)
+            {
+                break;
+            }
+
+            if (++try > 100)
+            {
+                mxt_log_warn(mxt->ctx, "Timed out awaiting CHG");
+                return MXT_ERROR_TIMEOUT;
+            }
+
+            usleep(1000);
+        }
+
+        mxt_log_verb(mxt->ctx, "CHG line cycles %d", try);
+        ret_val = MXT_SUCCESS;
+    }
+    else
+#endif
+    {
+        if ( (E_I2C_DEV == mxt->conn->type && mxt->conn->i2c_dev.gpio >= 0) ||
+             (E_SPI_DEV == mxt->conn->type && mxt->conn->spi_dev.gpio >= 0) )
+        {
+            int count_timeout = 50; // 50 msec
+            int gpio_val = E_SPI_DEV == mxt->conn->type ? mxt->conn->spi_dev.gpio : mxt->conn->i2c_dev.gpio;
+            while (0 != mxt_get_gpio_value(gpio_val) && count_timeout > 0)
+            {
+                count_timeout--;
+                usleep(1000); // 1 msec
+            }
+            ret_val = count_timeout > 0 ? MXT_SUCCESS : MXT_ERROR_TIMEOUT;
+        }
+        else
+        {
+            usleep(MXT_CHG_USEC_DELAY);
+            ret_val = MXT_SUCCESS;
+        }
+    }
+
+    return ret_val;
 }

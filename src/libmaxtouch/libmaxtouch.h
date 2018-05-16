@@ -74,6 +74,9 @@ struct mxt_conn_info;
 /* Calibrate timeout */
 #define MXT_CALIBRATE_TIMEOUT 10
 
+/* delay for waiting for changeline if gpio interrupt not available */
+#define MXT_CHG_USEC_DELAY  50000
+
 //******************************************************************************
 /// \brief Return codes
 enum mxt_rc
@@ -221,6 +224,9 @@ int mxt_msg_wait(struct mxt_device *mxt, int timeout_ms);
 int mxt_errno_to_rc(int errno_in);
 int mxt_report_all(struct mxt_device *mxt);
 int mxt_checkcrc(struct libmaxtouch_ctx *ctx, struct mxt_device *mxt, char *filename);
+
+int mxt_get_gpio_value(unsigned int gpio);
+int mxt_wait_for_chg(struct mxt_device *mxt);
 
 #ifdef __cplusplus
 }
