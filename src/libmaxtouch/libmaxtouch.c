@@ -450,6 +450,7 @@ int mxt_set_debug(struct mxt_device *mxt, bool debug_state)
         case E_USB:
 #endif
         case E_I2C_DEV:
+        case E_SPI_DEV:
         case E_HIDRAW:
             /* No need to enable MSG output */
             ret = MXT_SUCCESS;
@@ -487,6 +488,7 @@ int mxt_get_debug(struct mxt_device *mxt, bool *value)
 #endif /* HAVE_LIBUSB */
 
         case E_I2C_DEV:
+        case E_SPI_DEV:
         case E_HIDRAW:
         default:
             ret = MXT_ERROR_NOT_SUPPORTED;
@@ -543,6 +545,7 @@ int mxt_reset_chip(struct mxt_device *mxt, bool bootloader_mode)
     {
         case E_SYSFS:
         case E_I2C_DEV:
+        case E_SPI_DEV:
         case E_HIDRAW:
             ret = mxt_send_reset_command(mxt, bootloader_mode);
             break;
@@ -729,6 +732,7 @@ int mxt_get_msg_count(struct mxt_device *mxt, int *count)
         case E_USB:
 #endif /* HAVE_LIBUSB */
         case E_I2C_DEV:
+        case E_SPI_DEV:
         case E_HIDRAW:
             ret = t44_get_msg_count(mxt, count);
             break;
@@ -766,6 +770,7 @@ char *mxt_get_msg_string(struct mxt_device *mxt)
         case E_USB:
 #endif /* HAVE_LIBUSB */
         case E_I2C_DEV:
+        case E_SPI_DEV:
         case E_HIDRAW:
             msg_string = t44_get_msg_string(mxt);
             break;
@@ -812,6 +817,7 @@ int mxt_get_msg_bytes(struct mxt_device *mxt, unsigned char *buf,
         case E_USB:
 #endif /* HAVE_LIBUSB */
         case E_I2C_DEV:
+        case E_SPI_DEV:
         case E_HIDRAW:
             ret = t44_get_msg_bytes(mxt, buf, buflen, count);
             break;
@@ -855,6 +861,7 @@ int mxt_msg_reset(struct mxt_device *mxt)
         case E_USB:
 #endif /* HAVE_LIBUSB */
         case E_I2C_DEV:
+        case E_SPI_DEV:
         case E_HIDRAW:
             ret = t44_msg_reset(mxt);
             break;
