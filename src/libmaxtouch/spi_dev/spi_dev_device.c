@@ -382,19 +382,42 @@ close:
     return ret_val;
 }
 
-int spi_dev_bootloader_read(struct mxt_device *mxt, uint8_t *buf, uint16_t count)
+int spi_dev_bootloader_read(struct mxt_device *mxt,
+                            uint8_t *buf,
+                            uint16_t count)
 {
+    int fd = -ENODEV;
     int ret_val;
+    spi_ioc_tr.rx_buf = (unsigned long)spi_rx_buf;
+
     if (count > SPI_DEV_MAX_BLOCK)
     {
         mxt_log_err(mxt->ctx, "Unexpected bootloader read %d > %d", count, SPI_DEV_MAX_BLOCK);
-        ret_val = MXT_INTERNAL_ERROR;
+        return MXT_INTERNAL_ERROR;
+    }
+
+    ret_val = spi_open_device(mxt, &fd);
+    if (ret_val)
+    {
+        return ret_val;
+    }
+
+    /* READ */
+    spi_ioc_tr.tx_buf = (unsigned long)spi_tx_dummy_buf;
+    spi_ioc_tr.len = count;
+    ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
+    if (ret_val < 1)
+    {
+        mxt_log_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
+        ret_val = mxt_errno_to_rc(errno);
     }
     else
     {
-        int bytes_read;
-        ret_val = spi_dev_read_register(mxt, buf, 0, count, &bytes_read);
+        memcpy(buf, spi_rx_buf, count);
+        ret_val = MXT_SUCCESS;
     }
+
+    close(fd);
     return ret_val;
 }
 
@@ -402,5 +425,41 @@ int spi_dev_bootloader_write_blks(struct mxt_device *mxt,
                                   unsigned char const *buf,
                                   int count)
 {
-    return spi_dev_write_register(mxt, buf, 0, count);
+    int fd = -ENODEV;
+    int ret_val;
+    unsigned int offset = 0;
+    spi_ioc_tr.rx_buf = (unsigned long)spi_rx_buf;
+
+    ret_val = spi_open_device(mxt, &fd);
+    if (ret_val)
+    {
+        return ret_val;
+    }
+
+    while (offset < count)
+    {
+        unsigned int count_iter = count - offset;
+        if (count_iter > SPI_DEV_MAX_BLOCK)
+        {
+            count_iter = SPI_DEV_MAX_BLOCK;
+        }
+
+        /* WRITE */
+        spi_ioc_tr.tx_buf = (unsigned long)(buf + offset);
+        spi_ioc_tr.len = count_iter;
+        ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
+        if (ret_val < 1)
+        {
+            mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
+            ret_val = mxt_errno_to_rc(errno);
+            goto close;
+        }
+        offset += count_iter;
+    }
+
+    ret_val = MXT_SUCCESS;
+
+close:
+    close(fd);
+    return ret_val;
 }
