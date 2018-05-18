@@ -528,10 +528,7 @@ static int mxt_send_reset_command(struct mxt_device *mxt, bool bootloader_mode)
     }
 
     /* Write to command processor register to perform command */
-    ret = mxt_write_register
-          (
-              mxt, &write_value, t6_addr + MXT_T6_RESET_OFFSET, 1
-          );
+    ret = mxt_write_register(mxt, &write_value, t6_addr + MXT_T6_RESET_OFFSET, 1);
 
     return ret;
 }
