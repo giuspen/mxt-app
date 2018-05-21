@@ -234,7 +234,7 @@ int spi_dev_read_register(struct mxt_device *mxt,
         spi_ioc_tr.tx_buf = (unsigned long)spi_tx_buf;
         spi_ioc_tr.len = SPI_APP_HEADER_LEN;
         ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
-        if (ret_val < 1)
+        if (ret_val < 0)
         {
             mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
             ret_val = mxt_errno_to_rc(errno);
@@ -252,7 +252,7 @@ int spi_dev_read_register(struct mxt_device *mxt,
         spi_ioc_tr.tx_buf = (unsigned long)spi_tx_dummy_buf;
         spi_ioc_tr.len = SPI_APP_HEADER_LEN + count;
         ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
-        if (ret_val < 1)
+        if (ret_val < 0)
         {
             mxt_log_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
             ret_val = mxt_errno_to_rc(errno);
@@ -331,7 +331,7 @@ int spi_dev_write_register(struct mxt_device *mxt,
             spi_ioc_tr.tx_buf = (unsigned long)spi_tx_buf;
             spi_ioc_tr.len = SPI_APP_HEADER_LEN + count_iter;
             ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
-            if (ret_val < 1)
+            if (ret_val < 0)
             {
                 mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
                 ret_val = mxt_errno_to_rc(errno);
@@ -347,7 +347,7 @@ int spi_dev_write_register(struct mxt_device *mxt,
             spi_ioc_tr.tx_buf = (unsigned long)spi_tx_dummy_buf;
             spi_ioc_tr.len = SPI_APP_HEADER_LEN;
             ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
-            if (ret_val < 1)
+            if (ret_val < 0)
             {
                 mxt_log_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
                 ret_val = mxt_errno_to_rc(errno);
@@ -414,7 +414,7 @@ int spi_dev_bootloader_read(struct mxt_device *mxt,
     spi_ioc_tr[1].len = count;
 
     ret_val = ioctl(fd, SPI_IOC_MESSAGE(2), spi_ioc_tr);
-    if (ret_val < 2)
+    if (ret_val < 0)
     {
         mxt_log_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
         ret_val = mxt_errno_to_rc(errno);
@@ -445,6 +445,12 @@ int spi_dev_bootloader_write_blks(struct mxt_device *mxt,
         return ret_val;
     }
 
+    /* The bootloader is checking the LSBit of the first byte of SPI_BOOTL_HEADER_LEN,
+     * if found HIGH, assumes it's a READ, otherwise a WRITE.
+     * Our header_write is all composed by 0x00 */
+    spi_ioc_tr[0].tx_buf = (unsigned long)header_write;
+    spi_ioc_tr[0].len = 2;
+
     while (offset < count)
     {
         unsigned int count_iter = count - offset;
@@ -454,17 +460,18 @@ int spi_dev_bootloader_write_blks(struct mxt_device *mxt,
             count_iter = SPI_DEV_MAX_BLOCK;
         }
 
-        /* The bootloader is checking the LSBit of the first byte of SPI_BOOTL_HEADER_LEN,
-         * if found HIGH, assumes it's a READ, otherwise a WRITE.
-         * Our header_write is all composed by 0x00 */
-        spi_ioc_tr[0].tx_buf = (unsigned long)header_write;
-        spi_ioc_tr[0].len = 2;
-
         spi_ioc_tr[1].tx_buf = (unsigned long)(buf + offset);
         spi_ioc_tr[1].len = count_iter;
 
-        ret_val = ioctl(fd, SPI_IOC_MESSAGE(2), spi_ioc_tr);
-        if (ret_val < 2)
+        if (0 == offset)
+        {
+            ret_val = ioctl(fd, SPI_IOC_MESSAGE(2), spi_ioc_tr);
+        }
+        else
+        {
+            ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), spi_ioc_tr+1);
+        }
+        if (ret_val < 0)
         {
             mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
             ret_val = mxt_errno_to_rc(errno);
