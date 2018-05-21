@@ -75,7 +75,6 @@ static uint8_t spi_bits_per_word = 8;
 static uint32_t spi_max_speed_hz = 8000000; // 8 MHz
 static uint8_t spi_tx_buf[SPI_TX_RX_BUF_SIZE];
 static uint8_t spi_rx_buf[SPI_TX_RX_BUF_SIZE];
-static struct spi_ioc_transfer spi_ioc_tr;
 static uint8_t spi_tx_dummy_buf[SPI_TX_RX_BUF_SIZE] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -204,8 +203,8 @@ int spi_dev_read_register(struct mxt_device *mxt,
 {
     int fd = -ENODEV;
     int ret_val, attempt=0;
+    struct spi_ioc_transfer spi_ioc_tr = {0};
     spi_ioc_tr.rx_buf = (unsigned long)spi_rx_buf;
-    spi_ioc_tr.delay_usecs = 0;
 
     if (count > SPI_DEV_MAX_BLOCK)
     {
@@ -295,8 +294,8 @@ int spi_dev_write_register(struct mxt_device *mxt,
     int fd = -ENODEV;
     int ret_val;
     uint16_t offset = 0;
+    struct spi_ioc_transfer spi_ioc_tr = {0};
     spi_ioc_tr.rx_buf = (unsigned long)spi_rx_buf;
-    spi_ioc_tr.delay_usecs = 0;
 
     ret_val = spi_open_device(mxt, &fd);
     if (ret_val)
@@ -391,12 +390,11 @@ int spi_dev_bootloader_read(struct mxt_device *mxt,
 {
     int fd = -ENODEV;
     int ret_val;
-    spi_ioc_tr.rx_buf = (unsigned long)spi_rx_buf;
-    spi_ioc_tr.delay_usecs = 10;
+    struct spi_ioc_transfer spi_ioc_tr[2] = {0, 0};
 
-    if (SPI_BOOTL_HEADER_LEN + count > SPI_DEV_MAX_BLOCK)
+    if (count > SPI_DEV_MAX_BLOCK)
     {
-        mxt_log_err(mxt->ctx, "Unexpected bootloader read %d > %d", SPI_BOOTL_HEADER_LEN + count, SPI_DEV_MAX_BLOCK);
+        mxt_log_err(mxt->ctx, "Unexpected bootloader read %d > %d", count, SPI_DEV_MAX_BLOCK);
         return MXT_INTERNAL_ERROR;
     }
 
@@ -406,21 +404,24 @@ int spi_dev_bootloader_read(struct mxt_device *mxt,
         return ret_val;
     }
 
-    /* READ */
-    spi_ioc_tr.tx_buf = (unsigned long)spi_tx_dummy_buf;
     /* The bootloader is checking the LSBit of the first byte of SPI_BOOTL_HEADER_LEN,
      * if found HIGH, assumes it's a READ, otherwise a WRITE.
      * Our dummy buffer fits the purpose because it's all composed by 0xff */
-    spi_ioc_tr.len = SPI_BOOTL_HEADER_LEN + count;
-    ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
-    if (ret_val < 1)
+    spi_ioc_tr[0].tx_buf = (unsigned long)spi_tx_dummy_buf;
+    spi_ioc_tr[0].len = 2;
+
+    spi_ioc_tr[1].rx_buf = (unsigned long)spi_rx_buf;
+    spi_ioc_tr[1].len = count;
+
+    ret_val = ioctl(fd, SPI_IOC_MESSAGE(2), spi_ioc_tr);
+    if (ret_val < 2)
     {
         mxt_log_err(mxt->ctx, "Error %s (%d) reading from spi", strerror(errno), errno);
         ret_val = mxt_errno_to_rc(errno);
     }
     else
     {
-        memcpy(buf, spi_rx_buf + SPI_BOOTL_HEADER_LEN, count);
+        memcpy(buf, spi_rx_buf, count);
         ret_val = MXT_SUCCESS;
     }
 
@@ -435,8 +436,8 @@ int spi_dev_bootloader_write_blks(struct mxt_device *mxt,
     int fd = -ENODEV;
     int ret_val;
     unsigned int offset = 0;
-    spi_ioc_tr.rx_buf = (unsigned long)spi_rx_buf;
-    spi_ioc_tr.delay_usecs = 10;
+    struct spi_ioc_transfer spi_ioc_tr[2] = {0, 0};
+    uint8_t header_write[2] = {0, 0};
 
     ret_val = spi_open_device(mxt, &fd);
     if (ret_val)
@@ -448,38 +449,28 @@ int spi_dev_bootloader_write_blks(struct mxt_device *mxt,
     {
         unsigned int count_iter = count - offset;
 
-        /* WRITE */
-        if (0 == offset)
+        if (count_iter > SPI_DEV_MAX_BLOCK)
         {
-            /* We need to send the bootloader header
-             * The bootloader is checking the LSBit of the first byte of SPI_BOOTL_HEADER_LEN,
-             * if found HIGH, assumes it's a READ, otherwise a WRITE */
-            if (count_iter > SPI_DEV_MAX_BLOCK - SPI_BOOTL_HEADER_LEN)
-            {
-                count_iter = SPI_DEV_MAX_BLOCK - SPI_BOOTL_HEADER_LEN;
-            }
-            spi_ioc_tr.tx_buf = (unsigned long)spi_tx_buf;
-            spi_tx_buf[0] = 0;
-            spi_tx_buf[1] = 0;
-            memcpy(spi_tx_buf + 2, buf + offset, count_iter);
+            count_iter = SPI_DEV_MAX_BLOCK;
         }
-        else
-        {
-            if (count_iter > SPI_DEV_MAX_BLOCK)
-            {
-                count_iter = SPI_DEV_MAX_BLOCK;
-            }
-            spi_ioc_tr.tx_buf = (unsigned long)(buf + offset);
-        }
-        spi_ioc_tr.len = count_iter;
-        ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), &spi_ioc_tr);
-        if (ret_val < 1)
+
+        /* The bootloader is checking the LSBit of the first byte of SPI_BOOTL_HEADER_LEN,
+         * if found HIGH, assumes it's a READ, otherwise a WRITE.
+         * Our header_write is all composed by 0x00 */
+        spi_ioc_tr[0].tx_buf = (unsigned long)header_write;
+        spi_ioc_tr[0].len = 2;
+
+        spi_ioc_tr[1].tx_buf = (unsigned long)(buf + offset);
+        spi_ioc_tr[1].len = count_iter;
+
+        ret_val = ioctl(fd, SPI_IOC_MESSAGE(2), spi_ioc_tr);
+        if (ret_val < 2)
         {
             mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
             ret_val = mxt_errno_to_rc(errno);
             goto close;
         }
-        offset += offset > 0 ? count_iter : count_iter - SPI_BOOTL_HEADER_LEN;
+        offset += count_iter;
     }
 
     ret_val = MXT_SUCCESS;
