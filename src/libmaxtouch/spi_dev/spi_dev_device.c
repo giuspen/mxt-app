@@ -72,7 +72,7 @@ struct mxt_conn_info;
 
 static uint32_t spi_mode32 = SPI_CPHA | SPI_CPOL;
 static uint8_t spi_bits_per_word = 8;
-static uint32_t spi_app_max_speed_hz = 8000000; // 8 MHz
+static uint32_t spi_app_max_speed_hz = 4000000; // 4 MHz
 static uint32_t spi_bootl_max_speed_hz = 400000; // 400 KHz
 static uint8_t spi_tx_buf[SPI_TX_RX_BUF_SIZE];
 static uint8_t spi_rx_buf[SPI_TX_RX_BUF_SIZE];
