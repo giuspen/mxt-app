@@ -598,9 +598,13 @@ int mxt_flash_firmware(struct libmaxtouch_ctx *ctx,
         return ret;
     }
 
-    /* Handle transition back to appmode address */
-    if (fw.mxt->conn->type == E_I2C_DEV)
+    if (E_SPI_DEV == fw.mxt->conn->type)
     {
+        sleep(MXT_RESET_TIME);
+    }
+    else if (E_I2C_DEV == fw.mxt->conn->type)
+    {
+        /* Handle transition back to appmode address */
         sleep(MXT_RESET_TIME);
 
         if (fw.appmode_address < 0)
@@ -627,7 +631,7 @@ int mxt_flash_firmware(struct libmaxtouch_ctx *ctx,
         }
     }
 #ifdef HAVE_LIBUSB
-    else if (fw.mxt->conn->type == E_USB)
+    else if (E_USB == fw.mxt->conn->type)
     {
         bool bus_devices[USB_MAX_BUS_DEVICES] = { 0 };
         int tries = 10;
@@ -757,7 +761,7 @@ int mxt_bootloader_version(struct libmaxtouch_ctx *ctx, struct mxt_device *mxt, 
         goto release;
     }
 
-    printf("Bootloader ID:%d Version:%d\n", (buf[1] & 0x1f), buf[2]);
+    printf("Bootloader ID/Vers: %.2X %.2X\n", buf[1], buf[2]);
 
 release:
     mxt_log_info(fw.ctx, "Reset into app mode");

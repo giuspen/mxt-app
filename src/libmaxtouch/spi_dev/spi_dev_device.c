@@ -72,7 +72,8 @@ struct mxt_conn_info;
 
 static uint32_t spi_mode32 = SPI_CPHA | SPI_CPOL;
 static uint8_t spi_bits_per_word = 8;
-static uint32_t spi_max_speed_hz = 8000000; // 8 MHz
+static uint32_t spi_app_max_speed_hz = 8000000; // 8 MHz
+static uint32_t spi_bootl_max_speed_hz = 400000; // 400 KHz
 static uint8_t spi_tx_buf[SPI_TX_RX_BUF_SIZE];
 static uint8_t spi_rx_buf[SPI_TX_RX_BUF_SIZE];
 static uint8_t spi_tx_dummy_buf[SPI_TX_RX_BUF_SIZE] = {
@@ -142,7 +143,7 @@ static uint8_t get_header_crc(uint8_t *p_msg)
     return calc_crc;
 }
 
-static int spi_open_device(struct mxt_device *mxt, int *fd_out)
+static int spi_open_device(struct mxt_device *mxt, int *fd_out, uint8_t for_app)
 {
     int fd;
     int ret_val;
@@ -170,7 +171,7 @@ static int spi_open_device(struct mxt_device *mxt, int *fd_out)
         close(fd);
         return mxt_errno_to_rc(errno);
     }
-    ret_val = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, &spi_max_speed_hz);
+    ret_val = ioctl(fd, SPI_IOC_WR_MAX_SPEED_HZ, for_app ? &spi_app_max_speed_hz : &spi_bootl_max_speed_hz);
     if (ret_val == -1)
     {
         mxt_log_err(mxt->ctx, "can't set max speed hz, error %s (%d)", strerror(errno), errno);
@@ -211,7 +212,7 @@ int spi_dev_read_register(struct mxt_device *mxt,
         count = SPI_DEV_MAX_BLOCK;
     }
 
-    ret_val = spi_open_device(mxt, &fd);
+    ret_val = spi_open_device(mxt, &fd, 1/*for_app*/);
     if (ret_val)
     {
         return ret_val;
@@ -297,7 +298,7 @@ int spi_dev_write_register(struct mxt_device *mxt,
     struct spi_ioc_transfer spi_ioc_tr = {0};
     spi_ioc_tr.rx_buf = (unsigned long)spi_rx_buf;
 
-    ret_val = spi_open_device(mxt, &fd);
+    ret_val = spi_open_device(mxt, &fd, 1/*for_app*/);
     if (ret_val)
     {
         return ret_val;
@@ -398,7 +399,7 @@ int spi_dev_bootloader_read(struct mxt_device *mxt,
         return MXT_INTERNAL_ERROR;
     }
 
-    ret_val = spi_open_device(mxt, &fd);
+    ret_val = spi_open_device(mxt, &fd, 0/*for_app*/);
     if (ret_val)
     {
         return ret_val;
@@ -439,7 +440,7 @@ int spi_dev_bootloader_write_blks(struct mxt_device *mxt,
     struct spi_ioc_transfer spi_ioc_tr[2] = {0, 0};
     uint8_t header_write[2] = {0, 0};
 
-    ret_val = spi_open_device(mxt, &fd);
+    ret_val = spi_open_device(mxt, &fd, 0/*for_app*/);
     if (ret_val)
     {
         return ret_val;
@@ -463,14 +464,7 @@ int spi_dev_bootloader_write_blks(struct mxt_device *mxt,
         spi_ioc_tr[1].tx_buf = (unsigned long)(buf + offset);
         spi_ioc_tr[1].len = count_iter;
 
-        if (0 == offset)
-        {
-            ret_val = ioctl(fd, SPI_IOC_MESSAGE(2), spi_ioc_tr);
-        }
-        else
-        {
-            ret_val = ioctl(fd, SPI_IOC_MESSAGE(1), spi_ioc_tr+1);
-        }
+        ret_val = ioctl(fd, SPI_IOC_MESSAGE(2), spi_ioc_tr);
         if (ret_val < 0)
         {
             mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
