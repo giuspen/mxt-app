@@ -57,10 +57,8 @@ struct mxt_conn_info;
 #define SPI_INVALID_REQ  0x04
 #define SPI_INVALID_CRC  0x08
 
-#define SPI_APP_HEADER_LEN      6
-#define SPI_BOOTL_HEADER_LEN    2
-#define SPI_TX_RX_BUF_SIZE  (SPI_APP_HEADER_LEN+SPI_DEV_MAX_BLOCK)
-
+#define SPI_APP_DATA_MAX_LEN  64
+#define SPI_APP_HEADER_LEN     6
 // header 6 bytes + Data[]
 // 0 opcode
 // 1 address LSB
@@ -70,13 +68,17 @@ struct mxt_conn_info;
 // 5 CRC
 // 6+ Data[]
 
+#define SPI_BOOTL_HEADER_LEN   2
+
+#define SPI_APP_BUF_SIZE  (SPI_APP_HEADER_LEN+SPI_APP_DATA_MAX_LEN)
+
 static uint32_t spi_mode32 = SPI_CPHA | SPI_CPOL;
 static uint8_t spi_bits_per_word = 8;
 static uint32_t spi_app_max_speed_hz = 4000000; // 4 MHz
 static uint32_t spi_bootl_max_speed_hz = 400000; // 400 KHz
-static uint8_t spi_tx_buf[SPI_TX_RX_BUF_SIZE];
-static uint8_t spi_rx_buf[SPI_TX_RX_BUF_SIZE];
-static uint8_t spi_tx_dummy_buf[SPI_TX_RX_BUF_SIZE] = {
+static uint8_t spi_tx_buf[SPI_APP_BUF_SIZE];
+static uint8_t spi_rx_buf[SPI_APP_BUF_SIZE];
+static uint8_t spi_tx_dummy_buf[SPI_APP_BUF_SIZE] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -207,9 +209,9 @@ int spi_dev_read_register(struct mxt_device *mxt,
     struct spi_ioc_transfer spi_ioc_tr = {0};
     spi_ioc_tr.rx_buf = (unsigned long)spi_rx_buf;
 
-    if (count > SPI_DEV_MAX_BLOCK)
+    if (count > SPI_APP_DATA_MAX_LEN)
     {
-        count = SPI_DEV_MAX_BLOCK;
+        count = SPI_APP_DATA_MAX_LEN;
     }
 
     ret_val = spi_open_device(mxt, &fd, 1/*for_app*/);
@@ -309,9 +311,9 @@ int spi_dev_write_register(struct mxt_device *mxt,
         int attempt = 0;
         uint16_t count_iter = count - offset;
         uint16_t address_iter = start_register + offset;
-        if (count_iter > SPI_DEV_MAX_BLOCK)
+        if (count_iter > SPI_APP_DATA_MAX_LEN)
         {
-            count_iter = SPI_DEV_MAX_BLOCK;
+            count_iter = SPI_APP_DATA_MAX_LEN;
         }
 
         do
@@ -393,12 +395,6 @@ int spi_dev_bootloader_read(struct mxt_device *mxt,
     int ret_val;
     struct spi_ioc_transfer spi_ioc_tr[2] = {0, 0};
 
-    if (count > SPI_DEV_MAX_BLOCK)
-    {
-        mxt_log_err(mxt->ctx, "Unexpected bootloader read %d > %d", count, SPI_DEV_MAX_BLOCK);
-        return MXT_INTERNAL_ERROR;
-    }
-
     ret_val = spi_open_device(mxt, &fd, 0/*for_app*/);
     if (ret_val)
     {
@@ -411,7 +407,7 @@ int spi_dev_bootloader_read(struct mxt_device *mxt,
     spi_ioc_tr[0].tx_buf = (unsigned long)spi_tx_dummy_buf;
     spi_ioc_tr[0].len = 2;
 
-    spi_ioc_tr[1].rx_buf = (unsigned long)spi_rx_buf;
+    spi_ioc_tr[1].rx_buf = (unsigned long)buf;
     spi_ioc_tr[1].len = count;
 
     ret_val = ioctl(fd, SPI_IOC_MESSAGE(2), spi_ioc_tr);
@@ -422,7 +418,6 @@ int spi_dev_bootloader_read(struct mxt_device *mxt,
     }
     else
     {
-        memcpy(buf, spi_rx_buf, count);
         ret_val = MXT_SUCCESS;
     }
 
@@ -430,13 +425,12 @@ int spi_dev_bootloader_read(struct mxt_device *mxt,
     return ret_val;
 }
 
-int spi_dev_bootloader_write_blks(struct mxt_device *mxt,
-                                  unsigned char const *buf,
-                                  int count)
+int spi_dev_bootloader_write(struct mxt_device *mxt,
+                             unsigned char const *buf,
+                             int count)
 {
     int fd = -ENODEV;
     int ret_val;
-    unsigned int offset = 0;
     struct spi_ioc_transfer spi_ioc_tr[2] = {0, 0};
     uint8_t header_write[2] = {0, 0};
 
@@ -452,31 +446,20 @@ int spi_dev_bootloader_write_blks(struct mxt_device *mxt,
     spi_ioc_tr[0].tx_buf = (unsigned long)header_write;
     spi_ioc_tr[0].len = 2;
 
-    while (offset < count)
+    spi_ioc_tr[1].tx_buf = (unsigned long)buf;
+    spi_ioc_tr[1].len = count;
+
+    ret_val = ioctl(fd, SPI_IOC_MESSAGE(2), spi_ioc_tr);
+    if (ret_val < 0)
     {
-        unsigned int count_iter = count - offset;
-
-        if (count_iter > SPI_DEV_MAX_BLOCK)
-        {
-            count_iter = SPI_DEV_MAX_BLOCK;
-        }
-
-        spi_ioc_tr[1].tx_buf = (unsigned long)(buf + offset);
-        spi_ioc_tr[1].len = count_iter;
-
-        ret_val = ioctl(fd, SPI_IOC_MESSAGE(2), spi_ioc_tr);
-        if (ret_val < 0)
-        {
-            mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
-            ret_val = mxt_errno_to_rc(errno);
-            goto close;
-        }
-        offset += count_iter;
+        mxt_log_err(mxt->ctx, "Error %s (%d) writing to spi", strerror(errno), errno);
+        ret_val = mxt_errno_to_rc(errno);
+    }
+    else
+    {
+        ret_val = MXT_SUCCESS;
     }
 
-    ret_val = MXT_SUCCESS;
-
-close:
     close(fd);
     return ret_val;
 }

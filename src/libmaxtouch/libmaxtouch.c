@@ -973,7 +973,7 @@ int mxt_bootloader_write(struct mxt_device *mxt, unsigned char const *buf, int c
             break;
 
         case E_SPI_DEV:
-            ret = spi_dev_bootloader_write_blks(mxt, buf, count);
+            ret = spi_dev_bootloader_write(mxt, buf, count);
             break;
 
         case E_HIDRAW:

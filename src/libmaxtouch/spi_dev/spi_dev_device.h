@@ -26,8 +26,6 @@
 // EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //------------------------------------------------------------------------------
 
-#define SPI_DEV_MAX_BLOCK  64
-
 struct spi_dev_conn_info
 {
     int bus;
@@ -45,4 +43,4 @@ int spi_dev_write_register(struct mxt_device *mxt, uint8_t const *buf, uint16_t 
 
 int spi_dev_bootloader_read(struct mxt_device *mxt, uint8_t *buf, uint16_t count);
 
-int spi_dev_bootloader_write_blks(struct mxt_device *mxt, unsigned char const *buf, int count);
+int spi_dev_bootloader_write(struct mxt_device *mxt, unsigned char const *buf, int count);
