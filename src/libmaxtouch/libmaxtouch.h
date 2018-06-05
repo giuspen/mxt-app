@@ -124,13 +124,13 @@ enum mxt_rc
 /// \brief Device connection type
 enum mxt_device_type
 {
-    E_SYSFS,
+    E_SYSFS = 0,
+    E_I2C_DEV = 1,
+    E_SPI_DEV = 2,
+    E_HIDRAW = 3,
 #ifdef HAVE_LIBUSB
-    E_USB,
+    E_USB = 4,
 #endif
-    E_I2C_DEV,
-    E_SPI_DEV,
-    E_HIDRAW,
 };
 
 //******************************************************************************
