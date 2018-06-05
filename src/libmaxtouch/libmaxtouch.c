@@ -1105,3 +1105,50 @@ int mxt_wait_for_chg(struct mxt_device *mxt)
 
     return ret_val;
 }
+
+//******************************************************************************
+/// \brief Initialize mXT device and read the info block
+/// \return #mxt_rc
+int mxt_init_chip(struct libmaxtouch_ctx *ctx,
+                  struct mxt_device **mxt,
+                  struct mxt_conn_info **conn)
+{
+    int ret;
+
+    if (!*conn)
+    {
+        ret = mxt_scan(ctx, conn, false);
+        if (ret == MXT_ERROR_NO_DEVICE)
+        {
+            mxt_log_err(ctx, "Unable to find a device");
+            return ret;
+        }
+        else if (ret)
+        {
+            mxt_log_err(ctx, "Failed to find device");
+            return ret;
+        }
+    }
+
+    ret = mxt_new_device(ctx, *conn, mxt);
+    if (ret)
+    {
+        return ret;
+    }
+
+#ifdef HAVE_LIBUSB
+    if ((*mxt)->conn->type == E_USB && usb_is_bootloader(*mxt))
+    {
+        mxt_free_device(*mxt);
+        mxt_log_err(ctx, "USB device in bootloader mode");
+        return MXT_ERROR_UNEXPECTED_DEVICE_STATE;
+    }
+#endif
+    ret = mxt_get_info(*mxt);
+    if (ret)
+    {
+        return ret;
+    }
+
+    return MXT_SUCCESS;
+}

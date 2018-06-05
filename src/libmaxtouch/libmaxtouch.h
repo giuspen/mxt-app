@@ -228,6 +228,8 @@ int mxt_checkcrc(struct libmaxtouch_ctx *ctx, struct mxt_device *mxt, char *file
 int mxt_get_gpio_value(unsigned int gpio);
 int mxt_wait_for_chg(struct mxt_device *mxt);
 
+int mxt_init_chip(struct libmaxtouch_ctx *ctx, struct mxt_device **mxt, struct mxt_conn_info **conn);
+
 #ifdef __cplusplus
 }
 #endif
