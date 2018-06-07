@@ -308,8 +308,8 @@ given by the `-q/--query` option and lsusb.
 
 ## I2C debug interface
 
-Devices can be accessed directly via the *i2c-dev* I2C debug interface by giving
-adapter and address on command line.
+Devices can be accessed directly via the *i2c-dev* I2C interface by giving
+adapter and address on command line (and optionaly linux gpio of the CHG).
 
 The i2c-dev interface is documented in the Linux kernel source, in
     Documentation/i2c/dev-interface
@@ -318,7 +318,9 @@ The I2C debug interface support must be enabled using the `CONFIG_I2C_CHARDEV`
 kernel configuration option. It is enabled on a system if files `/dev/i2c-*`
 are present.
 
-To use i2c-dev, provide a device string such as `-d i2c-dev:1-004a`.
+To use i2c-dev, provide a device string such as `-d i2c-dev:1-4a`.
+If you have a linux GPIO pin number configured as input on the CHG (e.g. 48)
+you can exploit it using a device string such as `-d i2c-dev:1-4a-48`.
 
 Messages from the maXTouch devices are read by polling. If a kernel driver is
 also present on the system, reading messages on interrupt, then no messages
@@ -334,6 +336,18 @@ platform setup.
 
 It is possible to use the `--flash` command with a device already in bootloader
 mode, by specifying the bootloader address.
+
+## SPI debug interface
+
+Devices supporting it can be accessed directly via the *spi-dev* SPI interface by giving
+bus and chipselect on command line (and optionaly linux gpio of the CHG).
+
+The spi-dev interface is documented in the Linux kernel source, in
+    Documentation/spi/spidev
+
+To use spi-dev, provide a device string such as `-d spi-dev:1-0`.
+If you have a linux GPIO pin number configured as input on the CHG (e.g. 48)
+you can exploit it using a device string such as `-d spi-dev:1-0-48`.
 
 ## HIDRAW
 
